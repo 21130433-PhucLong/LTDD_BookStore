@@ -64,7 +64,7 @@ public class RegisterActivity extends AppCompatActivity {
             }
         });
 
-        // Màn hình đăng nhập đang nằm dưới trong back stack nên chỉ cần đóng màn hình này
+
         tvGoLogin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -82,7 +82,7 @@ public class RegisterActivity extends AppCompatActivity {
         tilConfirmPassword.setError(null);
     }
 
-    // Kiểm tra từng trường theo thứ tự, gặp lỗi đầu tiên thì dừng
+    // Kiểm tra từng trường theo thứ tự, gặp lỗi thì dừng
     private void handleRegister() {
         clearErrors();
 
@@ -128,11 +128,8 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        // TODO: lưu tài khoản vào database (D6)
-        // Quay về màn hình đăng nhập kèm email để điền sẵn
         Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
         intent.putExtra("email", email);
-        // CLEAR_TOP: xóa các màn hình nằm trên Login cũ, tránh có hai Login trong back stack
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
         finish();

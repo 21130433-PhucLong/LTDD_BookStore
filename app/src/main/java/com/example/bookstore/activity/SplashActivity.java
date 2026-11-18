@@ -15,12 +15,11 @@ public class SplashActivity extends AppCompatActivity {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-    // Công việc chạy sau khi hết thời gian chờ: sang màn hình đăng nhập
     private final Runnable goToLogin = new Runnable() {
         @Override
         public void run() {
             startActivity(new Intent(SplashActivity.this, LoginActivity.class));
-            finish(); // đóng Splash để bấm Back không quay lại nó
+            finish();
         }
     };
 
@@ -34,7 +33,6 @@ public class SplashActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Hủy lịch nếu Activity bị đóng trước khi hết giờ
         handler.removeCallbacks(goToLogin);
     }
 }

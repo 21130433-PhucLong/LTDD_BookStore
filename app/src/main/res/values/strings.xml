@@ -44,4 +44,7 @@
     <string name="stock_available">Còn %1$d cuốn</string>
     <string name="stock_out">Hết hàng</string>
     <string name="label_description">Mô tả</string>
+    <string name="error_login_failed">Email hoặc mật khẩu không đúng</string>
+    <string name="error_email_exists">Email này đã được đăng ký</string>
+    <string name="msg_register_failed">Đăng ký thất bại, vui lòng thử lại</string>
 </resources>

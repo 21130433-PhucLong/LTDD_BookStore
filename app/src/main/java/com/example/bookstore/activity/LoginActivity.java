@@ -59,7 +59,7 @@ public class LoginActivity extends AppCompatActivity {
         tvGoRegister = findViewById(R.id.tvGoRegister);
     }
 
-    // Nhận email từ màn hình đăng ký (nếu có) để điền sẵn
+
     private void showEmailFromRegister() {
         String email = getIntent().getStringExtra("email");
         if (email != null) {
@@ -117,7 +117,6 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        // TODO: kiểm tra tài khoản trong database (D6), hiện tại cho đăng nhập luôn
         Bundle bundle = new Bundle();
         bundle.putString("email", email);
 
@@ -127,7 +126,7 @@ public class LoginActivity extends AppCompatActivity {
         finish(); // đóng màn hình đăng nhập để Back không quay lại
     }
 
-    // Ghi log vòng đời để quan sát trong Logcat
+
     @Override
     protected void onStart() {
         super.onStart();

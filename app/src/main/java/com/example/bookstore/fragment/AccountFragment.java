@@ -19,7 +19,6 @@ public class AccountFragment extends Fragment {
 
     private static final String ARG_EMAIL = "email";
 
-    // Tạo Fragment kèm dữ liệu: đóng gói email vào Bundle rồi gắn làm arguments
     public static AccountFragment newInstance(String email) {
         AccountFragment fragment = new AccountFragment();
         Bundle args = new Bundle();
@@ -42,7 +41,6 @@ public class AccountFragment extends Fragment {
         TextView tvWelcome = view.findViewById(R.id.tvWelcome);
         Button btnLogout = view.findViewById(R.id.btnLogout);
 
-        // Đọc email từ arguments (có thể null nếu không truyền)
         Bundle args = getArguments();
         String email = "";
         if (args != null) {
@@ -54,7 +52,7 @@ public class AccountFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(requireActivity(), LoginActivity.class);
-                // Xóa toàn bộ back stack, Login trở thành màn hình đầu tiên
+
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
             }

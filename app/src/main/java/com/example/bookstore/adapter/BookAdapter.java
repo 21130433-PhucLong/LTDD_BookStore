@@ -42,7 +42,6 @@ public class BookAdapter extends BaseAdapter {
         return bookList.get(position).getId();
     }
 
-    // Đổi dữ liệu hiển thị (dùng khi lọc, tìm kiếm ở D7)
     public void setData(List<Book> books) {
         bookList.clear();
         bookList.addAll(books);

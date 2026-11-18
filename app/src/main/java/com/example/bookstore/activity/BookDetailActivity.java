@@ -19,7 +19,6 @@ import com.example.bookstore.util.WindowUtil;
 
 public class BookDetailActivity extends AppCompatActivity {
 
-    // Khóa dùng để gửi/nhận đối tượng Book qua Intent
     public static final String EXTRA_BOOK = "book";
 
     @Override
@@ -27,12 +26,12 @@ public class BookDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_book_detail);
-        // Chừa chỗ thanh trạng thái phía trên; phía dưới đã có khoảng đệm trong ScrollView
+
         WindowUtil.applySystemBarsPadding(findViewById(R.id.main), false);
 
         setupToolbar();
 
-        // Nhận đối tượng Book do HomeFragment gửi sang
+
         Book book = (Book) getIntent().getSerializableExtra(EXTRA_BOOK);
         if (book == null) {
             finish(); // không nhận được dữ liệu thì đóng màn hình

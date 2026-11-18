@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Cho giao diện tràn viền, sau đó tự chừa chỗ cho thanh hệ thống bên dưới
+
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
@@ -51,13 +51,11 @@ public class MainActivity extends AppCompatActivity {
 
         setupBottomNav();
 
-        // Chỉ chọn tab đầu khi mở mới; xoay màn hình thì hệ thống tự khôi phục Fragment
         if (savedInstanceState == null) {
             bottomNav.setSelectedItemId(R.id.nav_home);
         }
     }
 
-    // Chừa khoảng trống phía trên (thanh trạng thái) và hai bên, phần dưới do BottomNavigationView tự xử lý
     private void setupSystemBarsPadding() {
         View root = findViewById(R.id.main);
         ViewCompat.setOnApplyWindowInsetsListener(root, new OnApplyWindowInsetsListener() {
@@ -76,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 int id = item.getItemId();
-                // Dùng if-else vì R.id không còn là hằng số trong Android Studio mới (không dùng được switch-case)
+
                 if (id == R.id.nav_home) {
                     showFragment(new HomeFragment(), R.string.tab_home);
                     return true;
@@ -95,7 +93,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Thay Fragment đang hiển thị và đổi tiêu đề thanh trên
     private void showFragment(Fragment fragment, int titleResId) {
         getSupportFragmentManager()
                 .beginTransaction()
@@ -104,7 +101,6 @@ public class MainActivity extends AppCompatActivity {
         toolbar.setTitle(titleResId);
     }
 
-    // Option Menu: nạp menu_main.xml lên thanh tiêu đề
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);

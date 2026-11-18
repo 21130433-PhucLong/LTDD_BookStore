@@ -42,12 +42,10 @@ public class HomeFragment extends Fragment {
 
         lvBooks = view.findViewById(R.id.lvBooks);
 
-        // Dữ liệu tạm, đến D7 sẽ đọc từ SQLite
         List<Book> bookList = SampleData.getBooks();
         adapter = new BookAdapter(requireContext(), bookList);
         lvBooks.setAdapter(adapter);
 
-        // Bấm vào một sách: mở màn hình chi tiết, gửi cả đối tượng Book qua Intent
         lvBooks.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View itemView, int position, long id) {
