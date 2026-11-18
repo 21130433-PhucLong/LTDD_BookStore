@@ -47,4 +47,15 @@
     <string name="error_login_failed">Email hoặc mật khẩu không đúng</string>
     <string name="error_email_exists">Email này đã được đăng ký</string>
     <string name="msg_register_failed">Đăng ký thất bại, vui lòng thử lại</string>
+    <string name="all_categories">Tất cả</string>
+    <string name="search_hint">Tìm tên sách hoặc tác giả…</string>
+    <string name="result_count">%1$d sách</string>
+    <string name="empty_books">Không tìm thấy sách phù hợp</string>
+    <string name="category_label">%1$s (%2$d sách)</string>
+    <string-array name="sort_options">
+        <item>Mới nhất</item>
+        <item>Giá tăng dần</item>
+        <item>Giá giảm dần</item>
+        <item>Bán chạy nhất</item>
+    </string-array>
 </resources>
