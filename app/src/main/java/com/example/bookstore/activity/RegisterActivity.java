@@ -7,6 +7,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import android.widget.Toast;
+
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -14,6 +16,7 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.example.bookstore.R;
 import com.example.bookstore.util.ValidationUtil;
 import com.example.bookstore.util.WindowUtil;
+import com.example.bookstore.data.DatabaseHelper;
 
 public class RegisterActivity extends AppCompatActivity {
 
@@ -128,8 +131,25 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
+        // Kiểm tra email đã có người dùng chưa
+        DatabaseHelper db = DatabaseHelper.getInstance(this);
+        if (db.isEmailExists(email)) {
+            tilEmail.setError(getString(R.string.error_email_exists));
+            edtEmail.requestFocus();
+            return;
+        }
+
+        // Lưu tài khoản vào database
+        long newId = db.insertUser(fullName, email, phone, password);
+        if (newId == -1) {
+            Toast.makeText(this, R.string.msg_register_failed, Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // Quay về màn hình đăng nhập kèm email để điền sẵn
         Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
         intent.putExtra("email", email);
+
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
         finish();

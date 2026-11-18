@@ -8,6 +8,8 @@ import android.os.Looper;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.bookstore.R;
+import com.example.bookstore.data.DatabaseHelper;
+import com.example.bookstore.util.SessionManager;
 
 public class SplashActivity extends AppCompatActivity {
 
@@ -15,11 +17,13 @@ public class SplashActivity extends AppCompatActivity {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-    private final Runnable goToLogin = new Runnable() {
+    // Hết thời gian chờ: vào thẳng Main nếu đã ghi nhớ đăng nhập, ngược lại sang Login
+    private final Runnable goNext = new Runnable() {
         @Override
         public void run() {
-            startActivity(new Intent(SplashActivity.this, LoginActivity.class));
-            finish();
+            Class<?> target = isAutoLoginValid() ? MainActivity.class : LoginActivity.class;
+            startActivity(new Intent(SplashActivity.this, target));
+            finish(); // đóng Splash để bấm Back không quay lại nó
         }
     };
 
@@ -27,12 +31,24 @@ public class SplashActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
-        handler.postDelayed(goToLogin, SPLASH_DELAY);
+        handler.postDelayed(goNext, SPLASH_DELAY);
+    }
+
+    // Có ghi nhớ đăng nhập và tài khoản vẫn còn trong database thì mới tự đăng nhập
+    private boolean isAutoLoginValid() {
+        SessionManager session = new SessionManager(this);
+        if (session.isRemembered() && session.isLoggedIn()) {
+            if (DatabaseHelper.getInstance(this).getUserById(session.getUserId()) != null) {
+                return true;
+            }
+        }
+        session.logout(); // không ghi nhớ hoặc tài khoản không còn: xóa phiên cũ
+        return false;
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        handler.removeCallbacks(goToLogin);
+        handler.removeCallbacks(goNext);
     }
 }

@@ -1,5 +1,6 @@
 package com.example.bookstore.activity;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,24 +16,34 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
-import com.example.bookstore.R;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationBarView;
+import com.example.bookstore.R;
+import com.example.bookstore.data.DatabaseHelper;
 import com.example.bookstore.fragment.AccountFragment;
 import com.example.bookstore.fragment.CartFragment;
 import com.example.bookstore.fragment.CategoryFragment;
 import com.example.bookstore.fragment.HomeFragment;
+import com.example.bookstore.model.User;
+import com.example.bookstore.util.SessionManager;
 
 public class MainActivity extends AppCompatActivity {
 
     private MaterialToolbar toolbar;
     private BottomNavigationView bottomNav;
-    private String email = "";
+    private String userName = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Chưa đăng nhập hoặc tài khoản không còn: quay về màn hình đăng nhập
+        if (!loadCurrentUser()) {
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
 
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
@@ -43,12 +54,6 @@ public class MainActivity extends AppCompatActivity {
         bottomNav = findViewById(R.id.bottomNav);
         setSupportActionBar(toolbar);
 
-        // Lấy email do màn hình đăng nhập gửi sang
-        Bundle bundle = getIntent().getBundleExtra("userData");
-        if (bundle != null) {
-            email = bundle.getString("email", "");
-        }
-
         setupBottomNav();
 
         if (savedInstanceState == null) {
@@ -56,6 +61,19 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Đọc người dùng hiện tại theo phiên đăng nhập
+    private boolean loadCurrentUser() {
+        SessionManager session = new SessionManager(this);
+        User user = DatabaseHelper.getInstance(this).getUserById(session.getUserId());
+        if (user == null) {
+            session.logout();
+            return false;
+        }
+        userName = user.getName();
+        return true;
+    }
+
+    // Chừa khoảng trống phía trên (thanh trạng thái) và hai bên, phần dưới do BottomNavigationView tự xử lý
     private void setupSystemBarsPadding() {
         View root = findViewById(R.id.main);
         ViewCompat.setOnApplyWindowInsetsListener(root, new OnApplyWindowInsetsListener() {
@@ -85,13 +103,14 @@ public class MainActivity extends AppCompatActivity {
                     showFragment(new CartFragment(), R.string.tab_cart);
                     return true;
                 } else if (id == R.id.nav_account) {
-                    showFragment(AccountFragment.newInstance(email), R.string.tab_account);
+                    showFragment(AccountFragment.newInstance(userName), R.string.tab_account);
                     return true;
                 }
                 return false;
             }
         });
     }
+
 
     private void showFragment(Fragment fragment, int titleResId) {
         getSupportFragmentManager()
@@ -100,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
                 .commit();
         toolbar.setTitle(titleResId);
     }
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -111,7 +131,6 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.action_search) {
-            // Chức năng tìm kiếm sẽ làm ở bước sau
             Toast.makeText(this, R.string.msg_feature_coming, Toast.LENGTH_SHORT).show();
             return true;
         } else if (id == R.id.action_cart) {

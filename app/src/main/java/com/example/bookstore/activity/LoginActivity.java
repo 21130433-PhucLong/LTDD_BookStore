@@ -17,6 +17,9 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.example.bookstore.R;
 import com.example.bookstore.util.ValidationUtil;
 import com.example.bookstore.util.WindowUtil;
+import com.example.bookstore.data.DatabaseHelper;
+import com.example.bookstore.model.User;
+import com.example.bookstore.util.SessionManager;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -117,12 +120,19 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        Bundle bundle = new Bundle();
-        bundle.putString("email", email);
+        // Kiểm tra tài khoản trong database
+        User user = DatabaseHelper.getInstance(this).checkLogin(email, password);
+        if (user == null) {
+            // Một thông báo chung, không cho biết sai email hay sai mật khẩu
+            tilPassword.setError(getString(R.string.error_login_failed));
+            edtPassword.requestFocus();
+            return;
+        }
 
-        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-        intent.putExtra("userData", bundle);
-        startActivity(intent);
+        // Lưu phiên đăng nhập
+        new SessionManager(this).saveLogin(user.getId(), cbRemember.isChecked());
+
+        startActivity(new Intent(LoginActivity.this, MainActivity.class));
         finish(); // đóng màn hình đăng nhập để Back không quay lại
     }
 
