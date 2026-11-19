@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BookAdapter extends BaseAdapter {
-
+    // Đưa danh sách Book lên ListView
     private final Context context;
     private final List<Book> bookList;
 
@@ -90,7 +90,7 @@ public class BookAdapter extends BaseAdapter {
 
             holder.tvOldPrice.setPaintFlags(holder.tvOldPrice.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
             holder.tvDiscount.setVisibility(View.VISIBLE);
-            holder.tvDiscount.setText("-" + discount + "%");
+            holder.tvDiscount.setText(context.getString(R.string.discount_format, discount));
         } else {
             holder.tvOldPrice.setVisibility(View.GONE);
             holder.tvDiscount.setVisibility(View.GONE);

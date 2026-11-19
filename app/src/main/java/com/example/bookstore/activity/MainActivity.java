@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity implements CategoryFragment.
     private String userName = "";
 
     private String searchKeyword = "";  // từ khóa đang tìm
-    private int pendingCategoryId = 0;  // thể loại được chọn ở tab Danh mục, dùng khi mở tab Trang chủ
+    private int pendingCategoryId = 0;  // thể loại được chọn ở tab Danh mục
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,18 +103,19 @@ public class MainActivity extends AppCompatActivity implements CategoryFragment.
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 int id = item.getItemId();
+
                 if (id == R.id.nav_home) {
-                    showFragment(HomeFragment.newInstance(searchKeyword, pendingCategoryId), R.string.tab_home);
-                    pendingCategoryId = 0; // đã dùng xong
+                    showFragment(HomeFragment.newInstance(searchKeyword, pendingCategoryId));
+                    pendingCategoryId = 0;
                     return true;
                 } else if (id == R.id.nav_category) {
-                    showFragment(new CategoryFragment(), R.string.tab_category);
+                    showFragment(new CategoryFragment());
                     return true;
                 } else if (id == R.id.nav_cart) {
-                    showFragment(new CartFragment(), R.string.tab_cart);
+                    showFragment(new CartFragment());
                     return true;
                 } else if (id == R.id.nav_account) {
-                    showFragment(AccountFragment.newInstance(userName), R.string.tab_account);
+                    showFragment(AccountFragment.newInstance(userName));
                     return true;
                 }
                 return false;
@@ -122,13 +123,11 @@ public class MainActivity extends AppCompatActivity implements CategoryFragment.
         });
     }
 
-    // Thay Fragment đang hiển thị và đổi tiêu đề thanh trên
-    private void showFragment(Fragment fragment, int titleResId) {
+    private void showFragment(Fragment fragment) {
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.fragmentContainer, fragment)
                 .commit();
-        toolbar.setTitle(titleResId);
     }
 
     // Tab Danh mục báo người dùng vừa chọn một thể loại

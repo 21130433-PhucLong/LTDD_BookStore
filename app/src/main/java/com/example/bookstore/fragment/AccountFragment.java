@@ -63,4 +63,10 @@ public class AccountFragment extends Fragment {
             }
         });
     }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        requireActivity().setTitle(R.string.tab_account);
+    }
 }

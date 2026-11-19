@@ -195,4 +195,10 @@ public class HomeFragment extends Fragment {
         outState.putInt(STATE_CATEGORY, categoryId);
         outState.putInt(STATE_SORT, sortMode);
     }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        requireActivity().setTitle(R.string.tab_home);
+    }
 }

@@ -77,4 +77,10 @@ public class CategoryFragment extends Fragment {
             }
         });
     }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        requireActivity().setTitle(R.string.tab_category);
+    }
 }

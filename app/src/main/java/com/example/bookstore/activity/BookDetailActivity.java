@@ -18,7 +18,7 @@ import com.example.bookstore.util.ImageUtil;
 import com.example.bookstore.util.WindowUtil;
 
 public class BookDetailActivity extends AppCompatActivity {
-
+    // Hiển thị chi tiêtsachs nhận từ Intent
     public static final String EXTRA_BOOK = "book";
 
     @Override
@@ -75,7 +75,7 @@ public class BookDetailActivity extends AppCompatActivity {
             tvOldPrice.setText(FormatUtil.formatPrice(book.getOriginalPrice()));
             tvOldPrice.setPaintFlags(tvOldPrice.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
             tvDiscount.setVisibility(View.VISIBLE);
-            tvDiscount.setText("-" + discount + "%");
+            tvDiscount.setText(getString(R.string.discount_format, discount));
         } else {
             tvOldPrice.setVisibility(View.GONE);
             tvDiscount.setVisibility(View.GONE);

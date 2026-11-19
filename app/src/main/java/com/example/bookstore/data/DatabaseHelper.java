@@ -11,6 +11,7 @@ import com.example.bookstore.model.Category;
 import com.example.bookstore.model.User;
 import com.example.bookstore.util.PasswordUtil;
 import com.example.bookstore.util.TextUtil;
+import com.example.bookstore.model.CartItem;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -22,7 +23,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "bookstore.db";
 
-    private static final int DB_VERSION = 2;
+    private static final int DB_VERSION = 3;
 
     // ---- Bảng users ----
     public static final String TABLE_USERS = "users";
@@ -58,6 +59,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COL_BOOK_HIDDEN = "is_hidden";
     public static final String COL_BOOK_SEARCH = "search_text"; // tên + tác giả đã bỏ dấu, dùng để tìm kiếm
     public static final String COL_BOOK_CREATED = "created_at";
+
+    // ---- Bảng cart_items ----
+    public static final String TABLE_CART = "cart_items";
+    public static final String COL_CART_ID = "id";
+    public static final String COL_CART_USER = "user_id";
+    public static final String COL_CART_BOOK = "book_id";
+    public static final String COL_CART_QTY = "quantity";
+
+    // Kết quả của hàm addToCart
+    public static final int ADD_SUCCESS = 0;
+    public static final int ADD_EXCEEDS_STOCK = 1;
+    public static final int ADD_ERROR = 2;
 
     // Các cách sắp xếp (thứ tự khớp với mảng sort_options trong strings.xml)
     public static final int SORT_NEWEST = 0;
@@ -96,15 +109,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         createUserTable(db);
         insertDefaultAdmin(db);
         createBookTables(db);
-        seedBooks(db);
+        createCartTable(db);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // Nâng cấp từng bước và giữ nguyên dữ liệu cũ (không xóa bảng users)
+        // Nâng cấp từng bước và giữ nguyên dữ liệu cũ
         if (oldVersion < 2) {
             createBookTables(db);
             seedBooks(db);
+        }
+        if (oldVersion < 3) {
+            createCartTable(db);
         }
     }
 
@@ -396,5 +412,129 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         book.setHidden(cursor.getInt(cursor.getColumnIndexOrThrow(COL_BOOK_HIDDEN)) == 1);
         book.setCreatedAt(cursor.getString(cursor.getColumnIndexOrThrow(COL_BOOK_CREATED)));
         return book;
+    }
+
+    // ---------------- Giỏ hàng ----------------
+
+    // Mỗi người dùng chỉ có một dòng cho mỗi sách (UNIQUE); xóa người dùng hoặc sách thì xóa luôn dòng giỏ
+    private void createCartTable(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE " + TABLE_CART + " ("
+                + COL_CART_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + COL_CART_USER + " INTEGER NOT NULL, "
+                + COL_CART_BOOK + " INTEGER NOT NULL, "
+                + COL_CART_QTY + " INTEGER NOT NULL DEFAULT 1, "
+                + "UNIQUE (" + COL_CART_USER + ", " + COL_CART_BOOK + "), "
+                + "FOREIGN KEY (" + COL_CART_USER + ") REFERENCES " + TABLE_USERS + "(" + COL_USER_ID + ") ON DELETE CASCADE, "
+                + "FOREIGN KEY (" + COL_CART_BOOK + ") REFERENCES " + TABLE_BOOKS + "(" + COL_BOOK_ID + ") ON DELETE CASCADE)");
+    }
+
+    // Tồn kho của một sách, -1 nếu không có sách đó
+    private int getBookStock(SQLiteDatabase db, int bookId) {
+        Cursor cursor = db.rawQuery(
+                "SELECT " + COL_BOOK_STOCK + " FROM " + TABLE_BOOKS + " WHERE " + COL_BOOK_ID + " = ?",
+                new String[]{String.valueOf(bookId)});
+        try {
+            return cursor.moveToFirst() ? cursor.getInt(0) : -1;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    // Thêm sách vào giỏ: đã có thì cộng dồn số lượng, nhưng tổng không được vượt tồn kho
+    public int addToCart(int userId, int bookId, int quantity) {
+        SQLiteDatabase db = getWritableDatabase();
+
+        int stock = getBookStock(db, bookId);
+        if (stock < 0) {
+            return ADD_ERROR;
+        }
+
+        // Tìm dòng giỏ hiện có của sách này
+        int cartId = -1;
+        int currentQty = 0;
+        Cursor cursor = db.rawQuery(
+                "SELECT " + COL_CART_ID + ", " + COL_CART_QTY + " FROM " + TABLE_CART
+                        + " WHERE " + COL_CART_USER + " = ? AND " + COL_CART_BOOK + " = ?",
+                new String[]{String.valueOf(userId), String.valueOf(bookId)});
+        try {
+            if (cursor.moveToFirst()) {
+                cartId = cursor.getInt(0);
+                currentQty = cursor.getInt(1);
+            }
+        } finally {
+            cursor.close();
+        }
+
+        int newQty = currentQty + quantity;
+        if (newQty > stock) {
+            return ADD_EXCEEDS_STOCK;
+        }
+
+        if (cartId == -1) {
+            ContentValues values = new ContentValues();
+            values.put(COL_CART_USER, userId);
+            values.put(COL_CART_BOOK, bookId);
+            values.put(COL_CART_QTY, newQty);
+            return db.insert(TABLE_CART, null, values) == -1 ? ADD_ERROR : ADD_SUCCESS;
+        } else {
+            return updateCartQuantity(cartId, newQty) ? ADD_SUCCESS : ADD_ERROR;
+        }
+    }
+
+    // Đọc giỏ hàng của một người dùng kèm thông tin sách, bỏ qua sách đã bị ẩn
+    public List<CartItem> getCartItems(int userId) {
+        List<CartItem> list = new ArrayList<>();
+        String sql = "SELECT c." + COL_CART_ID + " AS cart_id, c." + COL_CART_QTY + ", b.*"
+                + " FROM " + TABLE_CART + " c"
+                + " INNER JOIN " + TABLE_BOOKS + " b ON b." + COL_BOOK_ID + " = c." + COL_CART_BOOK
+                + " WHERE c." + COL_CART_USER + " = ? AND b." + COL_BOOK_HIDDEN + " = 0"
+                + " ORDER BY c." + COL_CART_ID + " DESC";
+        Cursor cursor = getReadableDatabase().rawQuery(sql, new String[]{String.valueOf(userId)});
+        try {
+            while (cursor.moveToNext()) {
+                Book book = cursorToBook(cursor);
+                CartItem item = new CartItem();
+                item.setId(cursor.getInt(cursor.getColumnIndexOrThrow("cart_id")));
+                item.setUserId(userId);
+                item.setBookId(book.getId());
+                item.setQuantity(cursor.getInt(cursor.getColumnIndexOrThrow(COL_CART_QTY)));
+                item.setBook(book);
+                list.add(item);
+            }
+        } finally {
+            cursor.close();
+        }
+        return list;
+    }
+
+    // Đổi số lượng của một dòng giỏ
+    public boolean updateCartQuantity(int cartId, int quantity) {
+        ContentValues values = new ContentValues();
+        values.put(COL_CART_QTY, quantity);
+        int rows = getWritableDatabase().update(TABLE_CART, values,
+                COL_CART_ID + " = ?", new String[]{String.valueOf(cartId)});
+        return rows > 0;
+    }
+
+    public void deleteCartItem(int cartId) {
+        getWritableDatabase().delete(TABLE_CART, COL_CART_ID + " = ?", new String[]{String.valueOf(cartId)});
+    }
+
+    // Xóa sạch giỏ của một người dùng
+    public void clearCart(int userId) {
+        getWritableDatabase().delete(TABLE_CART, COL_CART_USER + " = ?", new String[]{String.valueOf(userId)});
+    }
+
+    // Số dòng trong giỏ, dùng cho số nhỏ trên biểu tượng tab Giỏ hàng
+    public int getCartCount(int userId) {
+        String sql = "SELECT COUNT(*) FROM " + TABLE_CART + " c"
+                + " INNER JOIN " + TABLE_BOOKS + " b ON b." + COL_BOOK_ID + " = c." + COL_CART_BOOK
+                + " WHERE c." + COL_CART_USER + " = ? AND b." + COL_BOOK_HIDDEN + " = 0";
+        Cursor cursor = getReadableDatabase().rawQuery(sql, new String[]{String.valueOf(userId)});
+        try {
+            return cursor.moveToFirst() ? cursor.getInt(0) : 0;
+        } finally {
+            cursor.close();
+        }
     }
 }

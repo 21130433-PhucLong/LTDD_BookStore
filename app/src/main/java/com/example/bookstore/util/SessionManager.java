@@ -3,6 +3,7 @@ package com.example.bookstore.util;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+// Lu phiên đăng nhập bằng SharedPrefernences
 public class SessionManager {
 
     private static final String PREF_NAME = "bookstore_session";

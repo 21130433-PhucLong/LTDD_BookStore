@@ -133,4 +133,58 @@
                 android:textSize="15sp" />
         </LinearLayout>
     </ScrollView>
+
+    <!-- Thanh chọn số lượng và nút thêm vào giỏ -->
+    <LinearLayout
+        android:id="@+id/bottomBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#FFFFFF"
+        android:elevation="6dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDecrease"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:text="@string/qty_minus"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/tvQty"
+            android:layout_width="48dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="@color/text_main"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnIncrease"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:text="@string/qty_plus"
+            android:textSize="20sp" />
+
+        <Button
+            android:id="@+id/btnAddToCart"
+            style="@style/ButtonPrimary"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:text="@string/btn_add_to_cart" />
+    </LinearLayout>
 </LinearLayout>
