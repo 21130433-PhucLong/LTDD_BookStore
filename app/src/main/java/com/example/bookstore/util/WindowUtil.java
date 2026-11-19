@@ -26,4 +26,18 @@ public class WindowUtil {
             }
         });
     }
+
+    public static void applyBottomInsetPadding(View view) {
+        final int basePaddingBottom = view.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(view, new OnApplyWindowInsetsListener() {
+            @NonNull
+            @Override
+            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
+                Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(),
+                        basePaddingBottom + bars.bottom);
+                return insets;
+            }
+        });
+    }
 }
