@@ -725,4 +725,134 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return order;
     }
 
+    // Danh sách đơn của một người dùng. status rỗng: mọi trạng thái; newestFirst: mới nhất trước
+    public List<Order> getOrdersByUser(int userId, String status, boolean newestFirst) {
+        List<Order> list = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(ORDER_SELECT + " WHERE o." + COL_ORDER_USER + " = ?");
+        List<String> args = new ArrayList<>();
+        args.add(String.valueOf(userId));
+        if (status != null && !status.isEmpty()) {
+            sql.append(" AND o.").append(COL_ORDER_STATUS).append(" = ?");
+            args.add(status);
+        }
+        String direction = newestFirst ? "DESC" : "ASC";
+        sql.append(" ORDER BY o.").append(COL_ORDER_CREATED).append(" ").append(direction)
+                .append(", o.").append(COL_ORDER_ID).append(" ").append(direction);
+
+        Cursor cursor = getReadableDatabase().rawQuery(sql.toString(), args.toArray(new String[0]));
+        try {
+            while (cursor.moveToNext()) {
+                list.add(cursorToOrder(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return list;
+    }
+
+    // Các dòng chi tiết của một đơn, kèm tên và ảnh sách (INNER JOIN)
+    public List<OrderItem> getOrderItems(int orderId) {
+        List<OrderItem> list = new ArrayList<>();
+        String sql = "SELECT oi.*, b." + COL_BOOK_TITLE + " AS book_title, b." + COL_BOOK_IMAGE + " AS book_image"
+                + " FROM " + TABLE_ORDER_ITEMS + " oi"
+                + " INNER JOIN " + TABLE_BOOKS + " b ON b." + COL_BOOK_ID + " = oi." + COL_OI_BOOK
+                + " WHERE oi." + COL_OI_ORDER + " = ? ORDER BY oi." + COL_OI_ID;
+        Cursor cursor = getReadableDatabase().rawQuery(sql, new String[]{String.valueOf(orderId)});
+        try {
+            while (cursor.moveToNext()) {
+                OrderItem item = new OrderItem();
+                item.setId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_OI_ID)));
+                item.setOrderId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_OI_ORDER)));
+                item.setBookId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_OI_BOOK)));
+                item.setQuantity(cursor.getInt(cursor.getColumnIndexOrThrow(COL_OI_QTY)));
+                item.setUnitPrice(cursor.getLong(cursor.getColumnIndexOrThrow(COL_OI_PRICE)));
+                item.setBookTitle(cursor.getString(cursor.getColumnIndexOrThrow("book_title")));
+                item.setBookImage(cursor.getString(cursor.getColumnIndexOrThrow("book_image")));
+                list.add(item);
+            }
+        } finally {
+            cursor.close();
+        }
+        return list;
+    }
+
+    // Khách tự hủy đơn: chỉ được khi đơn của mình và còn chờ xác nhận. Hủy xong trả lại tồn kho.
+    public boolean cancelOrder(int orderId, int userId, String reason) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            ContentValues values = new ContentValues();
+            values.put(COL_ORDER_STATUS, Order.STATUS_CANCELLED);
+            values.put(COL_ORDER_CANCEL_REASON, reason);
+            // Điều kiện trong WHERE đảm bảo đúng chủ đơn và đúng trạng thái; không khớp thì rows = 0
+            int rows = db.update(TABLE_ORDERS, values,
+                    COL_ORDER_ID + " = ? AND " + COL_ORDER_USER + " = ? AND " + COL_ORDER_STATUS + " = ?",
+                    new String[]{String.valueOf(orderId), String.valueOf(userId), Order.STATUS_PENDING});
+            if (rows != 1) {
+                return false;
+            }
+            // Trả lại tồn kho và giảm lượt bán
+            for (OrderItem item : getOrderItems(orderId)) {
+                db.execSQL("UPDATE " + TABLE_BOOKS + " SET " + COL_BOOK_STOCK + " = " + COL_BOOK_STOCK + " + ?, "
+                                + COL_BOOK_SOLD + " = MAX(" + COL_BOOK_SOLD + " - ?, 0) WHERE " + COL_BOOK_ID + " = ?",
+                        new Object[]{item.getQuantity(), item.getQuantity(), item.getBookId()});
+            }
+            db.setTransactionSuccessful();
+            return true;
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "Lỗi khi hủy đơn", e);
+            return false;
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    // ---------------- Hồ sơ cá nhân ----------------
+
+    // Kết quả đổi mật khẩu
+    public static final int PW_OK = 0;
+    public static final int PW_WRONG_OLD = 1;
+    public static final int PW_ERROR = 2;
+
+    // Cập nhật họ tên, số điện thoại, địa chỉ (email không đổi)
+    public boolean updateProfile(int userId, String name, String phone, String address) {
+        ContentValues values = new ContentValues();
+        values.put(COL_USER_NAME, name.trim());
+        values.put(COL_USER_PHONE, phone.trim());
+        values.put(COL_USER_ADDRESS, address.trim());
+        int rows = getWritableDatabase().update(TABLE_USERS, values,
+                COL_USER_ID + " = ?", new String[]{String.valueOf(userId)});
+        return rows > 0;
+    }
+
+    // Đổi mật khẩu: kiểm tra mật khẩu cũ, rồi lưu salt mới và hash mới
+    public int changePassword(int userId, String oldPassword, String newPassword) {
+        SQLiteDatabase db = getWritableDatabase();
+        String salt;
+        String savedHash;
+        Cursor cursor = db.rawQuery(
+                "SELECT " + COL_USER_SALT + ", " + COL_USER_HASH + " FROM " + TABLE_USERS
+                        + " WHERE " + COL_USER_ID + " = ?",
+                new String[]{String.valueOf(userId)});
+        try {
+            if (!cursor.moveToFirst()) {
+                return PW_ERROR;
+            }
+            salt = cursor.getString(0);
+            savedHash = cursor.getString(1);
+        } finally {
+            cursor.close();
+        }
+
+        if (!PasswordUtil.hash(oldPassword, salt).equals(savedHash)) {
+            return PW_WRONG_OLD;
+        }
+
+        String newSalt = PasswordUtil.generateSalt();
+        ContentValues values = new ContentValues();
+        values.put(COL_USER_SALT, newSalt);
+        values.put(COL_USER_HASH, PasswordUtil.hash(newPassword, newSalt));
+        int rows = db.update(TABLE_USERS, values, COL_USER_ID + " = ?", new String[]{String.valueOf(userId)});
+        return rows > 0 ? PW_OK : PW_ERROR;
+    }
 }

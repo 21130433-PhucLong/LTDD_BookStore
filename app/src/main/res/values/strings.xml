@@ -98,4 +98,57 @@
     <string name="order_code">Mã đơn: #%1$d</string>
     <string name="order_total_line">Tổng thanh toán: %1$s</string>
     <string name="btn_continue_shopping">Tiếp tục mua sắm</string>
+    <string name="title_orders">Đơn hàng của tôi</string>
+    <string name="title_order_detail">Chi tiết đơn hàng</string>
+    <string name="title_edit_profile">Chỉnh sửa thông tin</string>
+    <string name="title_change_password">Đổi mật khẩu</string>
+    <string name="status_all">Tất cả</string>
+    <string name="status_pending">Chờ xác nhận</string>
+    <string name="status_shipping">Đang giao</string>
+    <string name="status_delivered">Đã giao</string>
+    <string name="status_cancelled">Đã hủy</string>
+    <string name="payment_cod_short">Thanh toán khi nhận hàng</string>
+    <string name="payment_bank_short">Chuyển khoản (giả lập)</string>
+    <string name="label_order_code">Đơn #%1$d</string>
+    <string name="order_item_count">%1$d sản phẩm</string>
+    <string name="orders_empty">Chưa có đơn hàng nào</string>
+    <string name="label_order_date">Ngày đặt: %1$s</string>
+    <string name="label_receiver_value">Người nhận: %1$s</string>
+    <string name="label_phone_value">Số điện thoại: %1$s</string>
+    <string name="label_address_value">Địa chỉ: %1$s</string>
+    <string name="label_payment_value">Thanh toán: %1$s</string>
+    <string name="label_note_value">Ghi chú: %1$s</string>
+    <string name="label_cancel_reason_value">Lý do hủy: %1$s</string>
+    <string name="label_email_value">Email: %1$s</string>
+    <string name="not_updated">Chưa cập nhật</string>
+    <string name="btn_cancel_order">Hủy đơn hàng</string>
+    <string name="btn_export_invoice">Xuất hóa đơn</string>
+    <string name="dialog_cancel_title">Hủy đơn hàng</string>
+    <string name="hint_cancel_reason">Lý do hủy đơn</string>
+    <string name="error_cancel_reason">Vui lòng nhập lý do (ít nhất 5 ký tự)</string>
+    <string name="btn_confirm_cancel">Hủy đơn</string>
+    <string name="btn_back">Quay lại</string>
+    <string name="btn_close">Đóng</string>
+    <string name="msg_order_cancelled">Đã hủy đơn hàng</string>
+    <string name="msg_cancel_failed">Không hủy được đơn (đơn đã được xử lý)</string>
+    <string name="invoice_title">Hóa đơn</string>
+    <string name="msg_invoice_error">Không lưu được hóa đơn</string>
+
+    <string name="btn_my_orders">Đơn hàng của tôi</string>
+    <string name="btn_edit_profile">Chỉnh sửa thông tin</string>
+    <string name="btn_change_password">Đổi mật khẩu</string>
+    <string name="btn_save">Lưu</string>
+    <string name="btn_view_order">Xem đơn hàng</string>
+    <string name="hint_current_password">Mật khẩu hiện tại</string>
+    <string name="hint_new_password">Mật khẩu mới</string>
+    <string name="hint_confirm_new_password">Nhập lại mật khẩu mới</string>
+    <string name="msg_profile_saved">Đã lưu thông tin</string>
+    <string name="msg_password_changed">Đã đổi mật khẩu</string>
+    <string name="error_wrong_password">Mật khẩu hiện tại không đúng</string>
+    <string name="error_same_password">Mật khẩu mới phải khác mật khẩu cũ</string>
+    <string name="msg_update_failed">Cập nhật thất bại, vui lòng thử lại</string>
+    <string-array name="order_sort_options">
+        <item>Mới nhất</item>
+        <item>Cũ nhất</item>
+    </string-array>
 </resources>
