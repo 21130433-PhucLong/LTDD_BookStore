@@ -68,7 +68,34 @@
     <string name="msg_cart_error">Không thêm được vào giỏ, vui lòng thử lại</string>
     <string name="cart_hint">Nhấn giữ một sản phẩm để xóa khỏi giỏ</string>
     <string name="cart_total">Tổng tiền</string>
+
     <string name="btn_checkout">Đặt hàng</string>
     <string name="menu_remove_from_cart">Xóa khỏi giỏ hàng</string>
     <string name="msg_removed_from_cart">Đã xóa khỏi giỏ hàng</string>
+    <string name="title_checkout">Đặt hàng</string>
+    <string name="section_shipping_info">Thông tin giao hàng</string>
+    <string name="section_payment">Phương thức thanh toán</string>
+    <string name="section_order_items">Sản phẩm</string>
+    <string name="hint_receiver">Tên người nhận</string>
+    <string name="hint_address">Địa chỉ giao hàng</string>
+    <string name="hint_note">Ghi chú (không bắt buộc)</string>
+    <string name="payment_cod">Thanh toán khi nhận hàng (COD)</string>
+    <string name="payment_bank">Chuyển khoản ngân hàng</string>
+    <string name="payment_bank_note">Chuyển khoản giả lập: ứng dụng không thanh toán thật, đơn vẫn được tạo bình thường.</string>
+    <string name="label_subtotal">Tạm tính</string>
+    <string name="label_shipping">Phí giao hàng</string>
+    <string name="label_free">Miễn phí</string>
+    <string name="label_total">Tổng thanh toán</string>
+    <string name="btn_place_order">Xác nhận đặt hàng</string>
+    <string name="error_receiver_empty">Vui lòng nhập tên người nhận</string>
+    <string name="error_address_short">Địa chỉ cần ít nhất 10 ký tự</string>
+    <string name="error_order_empty_cart">Giỏ hàng đang trống</string>
+    <string name="error_order_stock">Một số sách không đủ tồn kho, vui lòng kiểm tra lại giỏ hàng</string>
+    <string name="error_order_other">Đặt hàng thất bại, vui lòng thử lại</string>
+    <string name="order_item_line">%1$s × %2$d</string>
+    <string name="title_order_success">Đặt hàng thành công</string>
+    <string name="order_success_message">Cảm ơn bạn đã đặt hàng!</string>
+    <string name="order_code">Mã đơn: #%1$d</string>
+    <string name="order_total_line">Tổng thanh toán: %1$s</string>
+    <string name="btn_continue_shopping">Tiếp tục mua sắm</string>
 </resources>

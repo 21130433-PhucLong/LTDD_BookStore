@@ -8,4 +8,8 @@
     <color name="text_sub">#757575</color>
     <color name="line_gray">#CFCFCF</color>
     <color name="error_red">#C62828</color>
+    <color name="status_pending">#EF6C00</color>
+    <color name="status_shipping">#1565C0</color>
+    <color name="status_delivered">#2E7D32</color>
+    <color name="status_cancelled">#C62828</color>
 </resources>

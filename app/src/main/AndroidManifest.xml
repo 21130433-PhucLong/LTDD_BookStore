@@ -41,6 +41,13 @@
             android:name=".activity.BookDetailActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".activity.CheckoutActivity"
+            android:exported="false" />
+        <activity
+            android:name=".activity.OrderSuccessActivity"
+            android:exported="false" />
+
     </application>
 
 </manifest>

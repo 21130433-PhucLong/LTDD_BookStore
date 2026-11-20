@@ -200,5 +200,8 @@ public class HomeFragment extends Fragment {
     public void onResume() {
         super.onResume();
         requireActivity().setTitle(R.string.tab_home);
+        if (getView() != null) {
+            loadBooks();
+        }
     }
 }

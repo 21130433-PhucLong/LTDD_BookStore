@@ -13,6 +13,11 @@ import com.example.bookstore.util.PasswordUtil;
 import com.example.bookstore.util.TextUtil;
 import com.example.bookstore.model.CartItem;
 
+import android.database.sqlite.SQLiteStatement;
+import android.util.Log;
+import com.example.bookstore.model.Order;
+import com.example.bookstore.model.OrderItem;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -23,7 +28,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "bookstore.db";
 
-    private static final int DB_VERSION = 3;
+    private static final int DB_VERSION = 4;
 
     // ---- Bảng users ----
     public static final String TABLE_USERS = "users";
@@ -67,6 +72,36 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COL_CART_BOOK = "book_id";
     public static final String COL_CART_QTY = "quantity";
 
+
+    // ---- Bảng orders ----
+    public static final String TABLE_ORDERS = "orders";
+    public static final String COL_ORDER_ID = "id";
+    public static final String COL_ORDER_USER = "user_id";
+    public static final String COL_ORDER_TOTAL = "total";
+    public static final String COL_ORDER_SHIPPING = "shipping_fee";
+    public static final String COL_ORDER_STATUS = "status";
+    public static final String COL_ORDER_RECEIVER = "receiver_name";
+    public static final String COL_ORDER_PHONE = "phone";
+    public static final String COL_ORDER_ADDRESS = "address";
+    public static final String COL_ORDER_PAYMENT = "payment_method";
+    public static final String COL_ORDER_NOTE = "note";
+    public static final String COL_ORDER_CANCEL_REASON = "cancel_reason";
+    public static final String COL_ORDER_CREATED = "created_at";
+
+    // ---- Bảng order_items ----
+    public static final String TABLE_ORDER_ITEMS = "order_items";
+    public static final String COL_OI_ID = "id";
+    public static final String COL_OI_ORDER = "order_id";
+    public static final String COL_OI_BOOK = "book_id";
+    public static final String COL_OI_QTY = "quantity";
+    public static final String COL_OI_PRICE = "unit_price";
+
+
+    // Kết quả của hàm placeOrder: số dương là id đơn mới, số âm là lỗi
+    public static final long ORDER_ERR_EMPTY_CART = -1;
+    public static final long ORDER_ERR_STOCK = -2;
+    public static final long ORDER_ERR_OTHER = -3;
+
     // Kết quả của hàm addToCart
     public static final int ADD_SUCCESS = 0;
     public static final int ADD_EXCEEDS_STOCK = 1;
@@ -78,7 +113,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final int SORT_PRICE_DESC = 2;
     public static final int SORT_BEST_SELLER = 3;
 
-    // Tài khoản quản trị tạo sẵn để thử (chỉ dùng khi học)
+    // Tài khoản quản trị tạo sẵn để thử
     public static final String ADMIN_EMAIL = "admin@bookstore.com";
     private static final String ADMIN_PASSWORD = "Admin123";
 
@@ -110,6 +145,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         insertDefaultAdmin(db);
         createBookTables(db);
         createCartTable(db);
+        createOrderTables(db);
     }
 
     @Override
@@ -121,6 +157,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 3) {
             createCartTable(db);
+        }
+        if (oldVersion < 4) {
+            createOrderTables(db);
         }
     }
 
@@ -416,7 +455,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // ---------------- Giỏ hàng ----------------
 
-    // Mỗi người dùng chỉ có một dòng cho mỗi sách (UNIQUE); xóa người dùng hoặc sách thì xóa luôn dòng giỏ
+    // Mỗi người dùng chỉ có một dòng cho mỗi sách; xóa người dùng hoặc sách thì xóa luôn dòng giỏ
     private void createCartTable(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE " + TABLE_CART + " ("
                 + COL_CART_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -537,4 +576,153 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             cursor.close();
         }
     }
+
+    // ---------------- Đơn hàng ----------------
+
+    private void createOrderTables(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE " + TABLE_ORDERS + " ("
+                + COL_ORDER_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + COL_ORDER_USER + " INTEGER NOT NULL, "
+                + COL_ORDER_TOTAL + " INTEGER NOT NULL, "
+                + COL_ORDER_SHIPPING + " INTEGER NOT NULL DEFAULT 0, "
+                + COL_ORDER_STATUS + " TEXT NOT NULL DEFAULT 'pending', "
+                + COL_ORDER_RECEIVER + " TEXT NOT NULL, "
+                + COL_ORDER_PHONE + " TEXT NOT NULL, "
+                + COL_ORDER_ADDRESS + " TEXT NOT NULL, "
+                + COL_ORDER_PAYMENT + " TEXT NOT NULL, "
+                + COL_ORDER_NOTE + " TEXT, "
+                + COL_ORDER_CANCEL_REASON + " TEXT, "
+                + COL_ORDER_CREATED + " TEXT NOT NULL, "
+                + "FOREIGN KEY (" + COL_ORDER_USER + ") REFERENCES " + TABLE_USERS + "(" + COL_USER_ID + "))");
+
+        // Xóa đơn thì xóa luôn các dòng chi tiết; sách đã có trong đơn thì không xóa được (chỉ ẩn)
+        db.execSQL("CREATE TABLE " + TABLE_ORDER_ITEMS + " ("
+                + COL_OI_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + COL_OI_ORDER + " INTEGER NOT NULL, "
+                + COL_OI_BOOK + " INTEGER NOT NULL, "
+                + COL_OI_QTY + " INTEGER NOT NULL, "
+                + COL_OI_PRICE + " INTEGER NOT NULL, "
+                + "FOREIGN KEY (" + COL_OI_ORDER + ") REFERENCES " + TABLE_ORDERS + "(" + COL_ORDER_ID + ") ON DELETE CASCADE, "
+                + "FOREIGN KEY (" + COL_OI_BOOK + ") REFERENCES " + TABLE_BOOKS + "(" + COL_BOOK_ID + "))");
+
+        db.execSQL("CREATE INDEX idx_orders_user ON " + TABLE_ORDERS + "(" + COL_ORDER_USER + ")");
+        db.execSQL("CREATE INDEX idx_order_items_order ON " + TABLE_ORDER_ITEMS + "(" + COL_OI_ORDER + ")");
+    }
+
+    // Câu SELECT đơn hàng kèm tổng số lượng sách
+    private static final String ORDER_SELECT = "SELECT o.*, "
+            + "(SELECT COALESCE(SUM(oi." + COL_OI_QTY + "), 0) FROM " + TABLE_ORDER_ITEMS
+            + " oi WHERE oi." + COL_OI_ORDER + " = o." + COL_ORDER_ID + ") AS item_count"
+            + " FROM " + TABLE_ORDERS + " o";
+
+    // Đặt hàng: tạo đơn, tạo các dòng chi tiết, trừ tồn kho, xóa giỏ.
+    // Tất cả nằm trong MỘT transaction: một bước lỗi thì mọi thay đổi bị hủy.
+    public long placeOrder(int userId, String receiverName, String phone, String address,
+                           String paymentMethod, String note) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            List<CartItem> items = getCartItems(userId);
+            if (items.isEmpty()) {
+                return ORDER_ERR_EMPTY_CART;
+            }
+
+            long subtotal = 0;
+            for (CartItem item : items) {
+                subtotal += item.getSubtotal();
+            }
+            long shippingFee = Order.calculateShippingFee(subtotal);
+
+            ContentValues orderValues = new ContentValues();
+            orderValues.put(COL_ORDER_USER, userId);
+            orderValues.put(COL_ORDER_TOTAL, subtotal + shippingFee);
+            orderValues.put(COL_ORDER_SHIPPING, shippingFee);
+            orderValues.put(COL_ORDER_STATUS, Order.STATUS_PENDING);
+            orderValues.put(COL_ORDER_RECEIVER, receiverName);
+            orderValues.put(COL_ORDER_PHONE, phone);
+            orderValues.put(COL_ORDER_ADDRESS, address);
+            orderValues.put(COL_ORDER_PAYMENT, paymentMethod);
+            orderValues.put(COL_ORDER_NOTE, note);
+            orderValues.put(COL_ORDER_CREATED, now());
+            long orderId = db.insert(TABLE_ORDERS, null, orderValues);
+            if (orderId == -1) {
+                return ORDER_ERR_OTHER;
+            }
+
+            SQLiteStatement updateStock = db.compileStatement(
+                    "UPDATE " + TABLE_BOOKS + " SET " + COL_BOOK_STOCK + " = " + COL_BOOK_STOCK + " - ?, "
+                            + COL_BOOK_SOLD + " = " + COL_BOOK_SOLD + " + ? WHERE " + COL_BOOK_ID + " = ? AND "
+                            + COL_BOOK_STOCK + " >= ?");
+            try {
+                for (CartItem item : items) {
+                    int qty = item.getQuantity();
+
+                    updateStock.clearBindings();
+                    updateStock.bindLong(1, qty);
+                    updateStock.bindLong(2, qty);
+                    updateStock.bindLong(3, item.getBookId());
+                    updateStock.bindLong(4, qty);
+                    if (updateStock.executeUpdateDelete() != 1) {
+                        return ORDER_ERR_STOCK;
+                    }
+
+                    ContentValues lineValues = new ContentValues();
+                    lineValues.put(COL_OI_ORDER, orderId);
+                    lineValues.put(COL_OI_BOOK, item.getBookId());
+                    lineValues.put(COL_OI_QTY, qty);
+                    lineValues.put(COL_OI_PRICE, item.getBook().getPrice());
+                    if (db.insert(TABLE_ORDER_ITEMS, null, lineValues) == -1) {
+                        return ORDER_ERR_OTHER;
+                    }
+                }
+            } finally {
+                updateStock.close();
+            }
+
+            db.delete(TABLE_CART, COL_CART_USER + " = ?", new String[]{String.valueOf(userId)});
+
+            db.setTransactionSuccessful();
+            return orderId;
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "Lỗi khi đặt hàng", e);
+            return ORDER_ERR_OTHER;
+        } finally {
+            db.endTransaction(); // chưa setTransactionSuccessful thì toàn bộ thay đổi bị hủy
+        }
+    }
+
+    // Lấy một đơn hàng theo id, không có thì trả về null
+    public Order getOrderById(int orderId) {
+        Cursor cursor = getReadableDatabase().rawQuery(
+                ORDER_SELECT + " WHERE o." + COL_ORDER_ID + " = ?",
+                new String[]{String.valueOf(orderId)});
+        try {
+            return cursor.moveToFirst() ? cursorToOrder(cursor) : null;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    // Đổi một dòng Cursor thành đối tượng Order
+    private Order cursorToOrder(Cursor cursor) {
+        Order order = new Order();
+        order.setId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_ORDER_ID)));
+        order.setUserId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_ORDER_USER)));
+        order.setTotal(cursor.getLong(cursor.getColumnIndexOrThrow(COL_ORDER_TOTAL)));
+        order.setShippingFee(cursor.getLong(cursor.getColumnIndexOrThrow(COL_ORDER_SHIPPING)));
+        order.setStatus(cursor.getString(cursor.getColumnIndexOrThrow(COL_ORDER_STATUS)));
+        order.setReceiverName(cursor.getString(cursor.getColumnIndexOrThrow(COL_ORDER_RECEIVER)));
+        order.setPhone(cursor.getString(cursor.getColumnIndexOrThrow(COL_ORDER_PHONE)));
+        order.setAddress(cursor.getString(cursor.getColumnIndexOrThrow(COL_ORDER_ADDRESS)));
+        order.setPaymentMethod(cursor.getString(cursor.getColumnIndexOrThrow(COL_ORDER_PAYMENT)));
+        order.setNote(cursor.getString(cursor.getColumnIndexOrThrow(COL_ORDER_NOTE)));
+        order.setCancelReason(cursor.getString(cursor.getColumnIndexOrThrow(COL_ORDER_CANCEL_REASON)));
+        order.setCreatedAt(cursor.getString(cursor.getColumnIndexOrThrow(COL_ORDER_CREATED)));
+        int countIndex = cursor.getColumnIndex("item_count");
+        if (countIndex >= 0) {
+            order.setItemCount(cursor.getInt(countIndex));
+        }
+        return order;
+    }
+
 }

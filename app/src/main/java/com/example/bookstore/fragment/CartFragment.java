@@ -16,6 +16,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import android.content.Intent;
 
 import com.example.bookstore.R;
 import com.example.bookstore.adapter.CartAdapter;
@@ -23,10 +24,11 @@ import com.example.bookstore.data.DatabaseHelper;
 import com.example.bookstore.model.CartItem;
 import com.example.bookstore.util.FormatUtil;
 import com.example.bookstore.util.SessionManager;
+import com.example.bookstore.activity.CheckoutActivity;
 
 import java.util.List;
 
-/** Tab giỏ hàng: danh sách sách đã thêm, đổi số lượng, nhấn giữ để xóa, tổng tiền. */
+//Tab giỏ hàng: danh sách sách đã thêm, đổi số lượng, nhấn giữ để xóa, tổng tiền.
 public class CartFragment extends Fragment {
 
     // MainActivity này để cập nhật số nhỏ trên tab khi giỏ thay đổi
@@ -93,13 +95,14 @@ public class CartFragment extends Fragment {
         btnCheckout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(requireContext(), R.string.msg_feature_coming, Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(requireContext(), CheckoutActivity.class));
             }
         });
 
         loadCart();
     }
 
+    // Đổi số lượng một dòng, kiểm tra giới hạn tối thiểu và tồn kho
     private void changeQuantity(CartItem item, int newQuantity) {
         if (newQuantity < 1) {
             Toast.makeText(requireContext(), R.string.msg_min_quantity, Toast.LENGTH_SHORT).show();
@@ -165,5 +168,6 @@ public class CartFragment extends Fragment {
     public void onResume() {
         super.onResume();
         requireActivity().setTitle(R.string.tab_cart);
+        loadCart();
     }
 }
