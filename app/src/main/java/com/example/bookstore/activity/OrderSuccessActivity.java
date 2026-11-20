@@ -7,6 +7,7 @@ import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import android.content.Intent;
 
 import com.example.bookstore.R;
 import com.example.bookstore.data.DatabaseHelper;
@@ -39,6 +40,18 @@ public class OrderSuccessActivity extends AppCompatActivity {
 
         tvOrderCode.setText(getString(R.string.order_code, order.getId()));
         tvOrderTotal.setText(getString(R.string.order_total_line, FormatUtil.formatPrice(order.getTotal())));
+
+        final int finalOrderId = order.getId();
+        Button btnViewOrder = findViewById(R.id.btnViewOrder);
+        btnViewOrder.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(OrderSuccessActivity.this, OrderDetailActivity.class);
+                intent.putExtra(OrderDetailActivity.EXTRA_ORDER_ID, finalOrderId);
+                startActivity(intent);
+                finish();
+            }
+        });
 
         btnContinue.setOnClickListener(new View.OnClickListener() {
             @Override

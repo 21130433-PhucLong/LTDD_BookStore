@@ -19,6 +19,7 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationBarView;
+
 import com.example.bookstore.R;
 import com.example.bookstore.data.DatabaseHelper;
 import com.example.bookstore.fragment.AccountFragment;
@@ -34,7 +35,6 @@ public class MainActivity extends AppCompatActivity implements CategoryFragment.
 
     private MaterialToolbar toolbar;
     private BottomNavigationView bottomNav;
-    private String userName = "";
 
     private String searchKeyword = "";  // từ khóa đang tìm
     private int pendingCategoryId = 0;  // thể loại được chọn ở tab Danh mục
@@ -80,7 +80,6 @@ public class MainActivity extends AppCompatActivity implements CategoryFragment.
             session.logout();
             return false;
         }
-        userName = user.getName();
         return true;
     }
 
@@ -115,7 +114,7 @@ public class MainActivity extends AppCompatActivity implements CategoryFragment.
                     showFragment(new CartFragment());
                     return true;
                 } else if (id == R.id.nav_account) {
-                    showFragment(AccountFragment.newInstance(userName));
+                    showFragment(new AccountFragment());
                     return true;
                 }
                 return false;
