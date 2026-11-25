@@ -144,6 +144,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         createUserTable(db);
         insertDefaultAdmin(db);
         createBookTables(db);
+        seedBooks(db);
         createCartTable(db);
         createOrderTables(db);
     }
