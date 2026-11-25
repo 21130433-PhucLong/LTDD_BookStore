@@ -84,4 +84,23 @@ public class Order {
 
     public int getItemCount() { return itemCount; }
     public void setItemCount(int itemCount) { this.itemCount = itemCount; }
+
+    // Tên khách, chỉ có khi quản trị viên xem danh sách (nối với bảng users), không lưu trong bảng orders
+    private String customerName;
+
+    public String getCustomerName() { return customerName; }
+    public void setCustomerName(String customerName) { this.customerName = customerName; }
+
+    // Quy tắc đổi trạng thái: chờ xác nhận -> đang giao -> đã giao; chưa giao xong thì hủy được
+    public static boolean canTransition(String from, String to) {
+        if (STATUS_PENDING.equals(from)) {
+            return STATUS_SHIPPING.equals(to) || STATUS_CANCELLED.equals(to);
+        }
+        if (STATUS_SHIPPING.equals(from)) {
+            return STATUS_DELIVERED.equals(to) || STATUS_CANCELLED.equals(to);
+        }
+        return false; // đã giao hoặc đã hủy thì không đổi nữa
+    }
+
+
 }

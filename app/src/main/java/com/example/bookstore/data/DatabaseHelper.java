@@ -5,18 +5,17 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.database.sqlite.SQLiteStatement;
+import android.util.Log;
 
 import com.example.bookstore.model.Book;
+import com.example.bookstore.model.CartItem;
 import com.example.bookstore.model.Category;
+import com.example.bookstore.model.Order;
+import com.example.bookstore.model.OrderItem;
 import com.example.bookstore.model.User;
 import com.example.bookstore.util.PasswordUtil;
 import com.example.bookstore.util.TextUtil;
-import com.example.bookstore.model.CartItem;
-
-import android.database.sqlite.SQLiteStatement;
-import android.util.Log;
-import com.example.bookstore.model.Order;
-import com.example.bookstore.model.OrderItem;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -72,7 +71,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COL_CART_BOOK = "book_id";
     public static final String COL_CART_QTY = "quantity";
 
-
     // ---- Bảng orders ----
     public static final String TABLE_ORDERS = "orders";
     public static final String COL_ORDER_ID = "id";
@@ -95,7 +93,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COL_OI_BOOK = "book_id";
     public static final String COL_OI_QTY = "quantity";
     public static final String COL_OI_PRICE = "unit_price";
-
 
     // Kết quả của hàm placeOrder: số dương là id đơn mới, số âm là lỗi
     public static final long ORDER_ERR_EMPTY_CART = -1;
@@ -723,6 +720,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (countIndex >= 0) {
             order.setItemCount(cursor.getInt(countIndex));
         }
+        int nameIndex = cursor.getColumnIndex("customer_name");
+        if (nameIndex >= 0) {
+            order.setCustomerName(cursor.getString(nameIndex));
+        }
         return order;
     }
 
@@ -777,37 +778,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return list;
     }
 
-    // Khách tự hủy đơn: chỉ được khi đơn của mình và còn chờ xác nhận. Hủy xong trả lại tồn kho.
-    public boolean cancelOrder(int orderId, int userId, String reason) {
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction();
-        try {
-            ContentValues values = new ContentValues();
-            values.put(COL_ORDER_STATUS, Order.STATUS_CANCELLED);
-            values.put(COL_ORDER_CANCEL_REASON, reason);
-            // Điều kiện trong WHERE đảm bảo đúng chủ đơn và đúng trạng thái; không khớp thì rows = 0
-            int rows = db.update(TABLE_ORDERS, values,
-                    COL_ORDER_ID + " = ? AND " + COL_ORDER_USER + " = ? AND " + COL_ORDER_STATUS + " = ?",
-                    new String[]{String.valueOf(orderId), String.valueOf(userId), Order.STATUS_PENDING});
-            if (rows != 1) {
-                return false;
-            }
-            // Trả lại tồn kho và giảm lượt bán
-            for (OrderItem item : getOrderItems(orderId)) {
-                db.execSQL("UPDATE " + TABLE_BOOKS + " SET " + COL_BOOK_STOCK + " = " + COL_BOOK_STOCK + " + ?, "
-                                + COL_BOOK_SOLD + " = MAX(" + COL_BOOK_SOLD + " - ?, 0) WHERE " + COL_BOOK_ID + " = ?",
-                        new Object[]{item.getQuantity(), item.getQuantity(), item.getBookId()});
-            }
-            db.setTransactionSuccessful();
-            return true;
-        } catch (Exception e) {
-            Log.e("DatabaseHelper", "Lỗi khi hủy đơn", e);
-            return false;
-        } finally {
-            db.endTransaction();
-        }
-    }
-
     // ---------------- Hồ sơ cá nhân ----------------
 
     // Kết quả đổi mật khẩu
@@ -855,5 +825,177 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COL_USER_HASH, PasswordUtil.hash(newPassword, newSalt));
         int rows = db.update(TABLE_USERS, values, COL_USER_ID + " = ?", new String[]{String.valueOf(userId)});
         return rows > 0 ? PW_OK : PW_ERROR;
+    }
+
+    // ---------------- Quản trị: sách ----------------
+
+    public Book getBookById(int bookId) {
+        Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT * FROM " + TABLE_BOOKS + " WHERE " + COL_BOOK_ID + " = ?",
+                new String[]{String.valueOf(bookId)});
+        try {
+            return cursor.moveToFirst() ? cursorToBook(cursor) : null;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    // Danh sách cho quản trị viên: gồm cả sách đang ẩn, mới nhất trước
+    public List<Book> getAllBooksForAdmin(String keyword) {
+        List<Book> list = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("SELECT * FROM " + TABLE_BOOKS + " WHERE 1 = 1");
+        List<String> args = new ArrayList<>();
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            sql.append(" AND ").append(COL_BOOK_SEARCH).append(" LIKE ?");
+            args.add("%" + TextUtil.toSearchText(keyword) + "%");
+        }
+        sql.append(" ORDER BY ").append(COL_BOOK_ID).append(" DESC");
+        Cursor cursor = getReadableDatabase().rawQuery(sql.toString(), args.toArray(new String[0]));
+        try {
+            while (cursor.moveToNext()) {
+                list.add(cursorToBook(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return list;
+    }
+
+    // Sửa thông tin sách. Không đụng tới số đã bán, điểm sao, ngày tạo.
+    public boolean updateBook(Book book) {
+        ContentValues values = new ContentValues();
+        values.put(COL_BOOK_TITLE, book.getTitle());
+        values.put(COL_BOOK_AUTHOR, book.getAuthor());
+        values.put(COL_BOOK_PUBLISHER, book.getPublisher());
+        values.put(COL_BOOK_PRICE, book.getPrice());
+        values.put(COL_BOOK_ORIGINAL_PRICE, book.getOriginalPrice());
+        values.put(COL_BOOK_STOCK, book.getStock());
+        values.put(COL_BOOK_DESC, book.getDescription());
+        values.put(COL_BOOK_IMAGE, book.getImage());
+        values.put(COL_BOOK_CATEGORY, book.getCategoryId());
+        values.put(COL_BOOK_HIDDEN, book.isHidden() ? 1 : 0);
+        values.put(COL_BOOK_SEARCH, TextUtil.toSearchText(book.getTitle() + " " + book.getAuthor()));
+        int rows = getWritableDatabase().update(TABLE_BOOKS, values,
+                COL_BOOK_ID + " = ?", new String[]{String.valueOf(book.getId())});
+        return rows > 0;
+    }
+
+    // ---------------- Quản trị: đơn hàng ----------------
+
+    // Kết quả của changeOrderStatus
+    public static final int CHANGE_OK = 0;
+    public static final int CHANGE_INVALID = 1;
+    public static final int CHANGE_ERROR = 2;
+
+    // Đơn của mọi khách kèm tên khách (INNER JOIN users). status rỗng: mọi trạng thái
+    public List<Order> getAllOrders(String status, boolean newestFirst) {
+        List<Order> list = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("SELECT o.*, u." + COL_USER_NAME + " AS customer_name, "
+                + "(SELECT COALESCE(SUM(oi." + COL_OI_QTY + "), 0) FROM " + TABLE_ORDER_ITEMS
+                + " oi WHERE oi." + COL_OI_ORDER + " = o." + COL_ORDER_ID + ") AS item_count"
+                + " FROM " + TABLE_ORDERS + " o"
+                + " INNER JOIN " + TABLE_USERS + " u ON u." + COL_USER_ID + " = o." + COL_ORDER_USER
+                + " WHERE 1 = 1");
+        List<String> args = new ArrayList<>();
+        if (status != null && !status.isEmpty()) {
+            sql.append(" AND o.").append(COL_ORDER_STATUS).append(" = ?");
+            args.add(status);
+        }
+        String direction = newestFirst ? "DESC" : "ASC";
+        sql.append(" ORDER BY o.").append(COL_ORDER_CREATED).append(" ").append(direction)
+                .append(", o.").append(COL_ORDER_ID).append(" ").append(direction);
+        Cursor cursor = getReadableDatabase().rawQuery(sql.toString(), args.toArray(new String[0]));
+        try {
+            while (cursor.moveToNext()) {
+                list.add(cursorToOrder(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return list;
+    }
+
+    public int countOrdersByStatus(String status) {
+        Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT COUNT(*) FROM " + TABLE_ORDERS + " WHERE " + COL_ORDER_STATUS + " = ?",
+                new String[]{status});
+        try {
+            return cursor.moveToFirst() ? cursor.getInt(0) : 0;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    // Quản trị viên đổi trạng thái đơn theo đúng quy tắc (Order.canTransition).
+    // Hủy đơn thì trả lại tồn kho. Toàn bộ trong một transaction.
+    public int changeOrderStatus(int orderId, String newStatus, String reason) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            Order order = getOrderById(orderId);
+            if (order == null) {
+                return CHANGE_ERROR;
+            }
+            if (!Order.canTransition(order.getStatus(), newStatus)) {
+                return CHANGE_INVALID;
+            }
+            ContentValues values = new ContentValues();
+            values.put(COL_ORDER_STATUS, newStatus);
+            boolean cancelling = Order.STATUS_CANCELLED.equals(newStatus);
+            if (cancelling) {
+                values.put(COL_ORDER_CANCEL_REASON, reason);
+            }
+            // Điều kiện status = trạng thái vừa đọc: nếu đơn vừa bị đổi ở nơi khác thì rows = 0
+            int rows = db.update(TABLE_ORDERS, values,
+                    COL_ORDER_ID + " = ? AND " + COL_ORDER_STATUS + " = ?",
+                    new String[]{String.valueOf(orderId), order.getStatus()});
+            if (rows != 1) {
+                return CHANGE_INVALID;
+            }
+            if (cancelling) {
+                restockOrder(db, orderId);
+            }
+            db.setTransactionSuccessful();
+            return CHANGE_OK;
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "Lỗi khi đổi trạng thái đơn", e);
+            return CHANGE_ERROR;
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    // Trả lại tồn kho và giảm lượt bán cho mọi sách trong đơn (dùng khi hủy đơn)
+    private void restockOrder(SQLiteDatabase db, int orderId) {
+        for (OrderItem item : getOrderItems(orderId)) {
+            db.execSQL("UPDATE " + TABLE_BOOKS + " SET " + COL_BOOK_STOCK + " = " + COL_BOOK_STOCK + " + ?, "
+                            + COL_BOOK_SOLD + " = MAX(" + COL_BOOK_SOLD + " - ?, 0) WHERE " + COL_BOOK_ID + " = ?",
+                    new Object[]{item.getQuantity(), item.getQuantity(), item.getBookId()});
+        }
+    }
+
+    // Khách tự hủy đơn: chỉ được khi đơn của mình và còn chờ xác nhận (bản gọn hơn nhờ restockOrder)
+    public boolean cancelOrder(int orderId, int userId, String reason) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            ContentValues values = new ContentValues();
+            values.put(COL_ORDER_STATUS, Order.STATUS_CANCELLED);
+            values.put(COL_ORDER_CANCEL_REASON, reason);
+            int rows = db.update(TABLE_ORDERS, values,
+                    COL_ORDER_ID + " = ? AND " + COL_ORDER_USER + " = ? AND " + COL_ORDER_STATUS + " = ?",
+                    new String[]{String.valueOf(orderId), String.valueOf(userId), Order.STATUS_PENDING});
+            if (rows != 1) {
+                return false;
+            }
+            restockOrder(db, orderId);
+            db.setTransactionSuccessful();
+            return true;
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "Lỗi khi hủy đơn", e);
+            return false;
+        } finally {
+            db.endTransaction();
+        }
     }
 }

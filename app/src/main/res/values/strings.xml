@@ -151,4 +151,42 @@
         <item>Mới nhất</item>
         <item>Cũ nhất</item>
     </string-array>
+
+    <string name="tab_admin">Quản trị</string>
+    <string name="admin_area_title">Khu vực quản trị</string>
+    <string name="admin_pending_orders">Đơn chờ xác nhận: %1$d</string>
+    <string name="btn_manage_books">Quản lý sách</string>
+    <string name="btn_manage_orders">Quản lý đơn hàng</string>
+    <string name="title_admin_books">Quản lý sách</string>
+    <string name="title_admin_orders">Quản lý đơn hàng</string>
+    <string name="title_add_book">Thêm sách</string>
+    <string name="title_edit_book">Sửa sách</string>
+    <string name="hint_search_admin_book">Tìm sách theo tên hoặc tác giả</string>
+    <string name="book_meta_admin">Tồn kho: %1$d  ·  Đã bán: %2$d</string>
+    <string name="badge_hidden">Đang ẩn</string>
+    <string name="hint_book_title">Tên sách</string>
+    <string name="hint_book_author">Tác giả</string>
+    <string name="hint_book_publisher">Nhà xuất bản</string>
+    <string name="hint_book_price">Giá bán (đồng)</string>
+    <string name="hint_book_original_price">Giá gốc (để trống nếu bằng giá bán)</string>
+    <string name="hint_book_stock">Số lượng tồn kho</string>
+    <string name="hint_book_description">Mô tả</string>
+    <string name="label_category">Thể loại</string>
+    <string name="label_cover">Ảnh bìa</string>
+    <string name="label_visible_to_customers">Hiển thị với khách hàng</string>
+    <string name="error_book_title">Vui lòng nhập tên sách</string>
+    <string name="error_book_author">Vui lòng nhập tác giả</string>
+    <string name="error_book_price">Giá bán phải là số từ 1.000 đến 99.999.999</string>
+    <string name="error_book_original_price">Giá gốc phải là số và không nhỏ hơn giá bán</string>
+    <string name="error_book_stock">Tồn kho phải là số từ 0 đến 99.999</string>
+    <string name="msg_book_saved">Đã lưu sách</string>
+    <string name="msg_book_save_failed">Lưu sách thất bại, vui lòng thử lại</string>
+    <string name="msg_book_not_found">Không tìm thấy sách</string>
+    <string name="btn_confirm_shipping">Xác nhận đơn và giao hàng</string>
+    <string name="btn_confirm_delivered">Xác nhận đã giao hàng</string>
+    <string name="msg_status_changed">Đã cập nhật trạng thái đơn</string>
+    <string name="msg_status_invalid">Không đổi được trạng thái (đơn đã thay đổi trước đó)</string>
+    <string name="label_customer_value">Khách hàng: %1$s (%2$s)</string>
+    <string name="books_empty">Không có sách phù hợp</string>
+
 </resources>
