@@ -28,6 +28,7 @@ import com.example.bookstore.fragment.CategoryFragment;
 import com.example.bookstore.fragment.HomeFragment;
 import com.example.bookstore.model.User;
 import com.example.bookstore.util.SessionManager;
+import com.example.bookstore.fragment.AdminFragment;
 
 public class MainActivity extends AppCompatActivity implements CategoryFragment.OnCategoryClickListener {
 
@@ -38,6 +39,7 @@ public class MainActivity extends AppCompatActivity implements CategoryFragment.
 
     private String searchKeyword = "";  // từ khóa đang tìm
     private int pendingCategoryId = 0;  // thể loại được chọn ở tab Danh mục
+    private boolean isAdmin = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +64,7 @@ public class MainActivity extends AppCompatActivity implements CategoryFragment.
 
         toolbar = findViewById(R.id.toolbar);
         bottomNav = findViewById(R.id.bottomNav);
+        bottomNav.getMenu().findItem(R.id.nav_admin).setVisible(isAdmin);
         setSupportActionBar(toolbar);
 
         setupBottomNav();
@@ -80,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements CategoryFragment.
             session.logout();
             return false;
         }
+        isAdmin = user.isAdmin();
         return true;
     }
 
@@ -116,7 +120,10 @@ public class MainActivity extends AppCompatActivity implements CategoryFragment.
                 } else if (id == R.id.nav_account) {
                     showFragment(new AccountFragment());
                     return true;
-                }
+                } else if (id == R.id.nav_admin) {
+                showFragment(new AdminFragment());
+                return true;
+            }
                 return false;
             }
         });

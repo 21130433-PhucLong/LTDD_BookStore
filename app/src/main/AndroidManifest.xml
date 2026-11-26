@@ -60,6 +60,14 @@
         <activity
             android:name=".activity.ChangePasswordActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".activity.AdminBookListActivity"
+            android:exported="false" />
+        <activity
+            android:name=".activity.BookEditActivity"
+            android:exported="false" />
+
     </application>
 
 </manifest>
