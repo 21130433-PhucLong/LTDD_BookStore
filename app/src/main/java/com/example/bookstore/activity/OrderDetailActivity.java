@@ -17,6 +17,8 @@ import com.example.bookstore.R;
 import com.example.bookstore.data.DatabaseHelper;
 import com.example.bookstore.model.Order;
 import com.example.bookstore.model.OrderItem;
+import com.example.bookstore.model.User;
+import com.example.bookstore.util.AdminUtil;
 import com.example.bookstore.util.FormatUtil;
 import com.example.bookstore.util.InvoiceUtil;
 import com.example.bookstore.util.SessionManager;
@@ -28,21 +30,21 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-/**
- * Chi tiết một đơn hàng: thông tin giao hàng, sản phẩm, tổng tiền; hủy đơn và xuất hóa đơn.
- */
 public class OrderDetailActivity extends AppCompatActivity {
 
     public static final String EXTRA_ORDER_ID = "order_id";
+    public static final String EXTRA_ADMIN_MODE = "admin_mode";
 
     private DatabaseHelper db;
     private int userId;
     private int orderId;
+    private boolean adminMode;
     private Order order;
 
     private TextView tvOrderCode;
     private TextView tvStatus;
     private TextView tvDate;
+    private TextView tvCustomer;
     private TextView tvReceiver;
     private TextView tvPhone;
     private TextView tvAddress;
@@ -51,12 +53,20 @@ public class OrderDetailActivity extends AppCompatActivity {
     private TextView tvCancelReason;
     private LinearLayout llItems;
     private LinearLayout llSummary;
+    private Button btnAction;
     private Button btnInvoice;
     private Button btnCancel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        adminMode = getIntent().getBooleanExtra(EXTRA_ADMIN_MODE, false);
+        if (adminMode && !AdminUtil.isCurrentUserAdmin(this)) {
+            finish();
+            return;
+        }
+
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_order_detail);
         WindowUtil.applySystemBarsPadding(findViewById(R.id.main), false);
@@ -84,12 +94,19 @@ public class OrderDetailActivity extends AppCompatActivity {
                 exportInvoice();
             }
         });
+        btnAction.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                moveToNextStatus();
+            }
+        });
     }
 
     private void initViews() {
         tvOrderCode = findViewById(R.id.tvOrderCode);
         tvStatus = findViewById(R.id.tvStatus);
         tvDate = findViewById(R.id.tvDate);
+        tvCustomer = findViewById(R.id.tvCustomer);
         tvReceiver = findViewById(R.id.tvReceiver);
         tvPhone = findViewById(R.id.tvPhone);
         tvAddress = findViewById(R.id.tvAddress);
@@ -98,6 +115,7 @@ public class OrderDetailActivity extends AppCompatActivity {
         tvCancelReason = findViewById(R.id.tvCancelReason);
         llItems = findViewById(R.id.llItems);
         llSummary = findViewById(R.id.llSummary);
+        btnAction = findViewById(R.id.btnAction);
         btnInvoice = findViewById(R.id.btnInvoice);
         btnCancel = findViewById(R.id.btnCancel);
     }
@@ -105,8 +123,9 @@ public class OrderDetailActivity extends AppCompatActivity {
     // Đọc đơn từ database và hiển thị; trả về false (và đóng màn hình) nếu không xem được đơn này
     private boolean showOrder() {
         order = db.getOrderById(orderId);
-        if (order == null || order.getUserId() != userId) {
-            finish(); // không có đơn, hoặc đơn của người khác
+        // Khách chỉ xem được đơn của chính mình; quản trị viên xem được mọi đơn
+        if (order == null || (!adminMode && order.getUserId() != userId)) {
+            finish();
             return false;
         }
 
@@ -147,9 +166,63 @@ public class OrderDetailActivity extends AppCompatActivity {
         UiUtil.addLine(this, llSummary, getString(R.string.label_total),
                 FormatUtil.formatPrice(order.getTotal()), true);
 
-        // Nút hủy chỉ hiện khi đơn còn chờ xác nhận
-        btnCancel.setVisibility(order.canCancel() ? View.VISIBLE : View.GONE);
+        showButtons();
         return true;
+    }
+
+    // Quyết định hiện nút nào tùy chế độ và trạng thái đơn
+    private void showButtons() {
+        if (adminMode) {
+            User customer = db.getUserById(order.getUserId());
+            String name = customer == null ? "" : customer.getName();
+            String email = customer == null ? "" : customer.getEmail();
+            tvCustomer.setVisibility(View.VISIBLE);
+            tvCustomer.setText(getString(R.string.label_customer_value, name, email));
+
+            // Nút chuyển sang bước tiếp theo
+            if (Order.STATUS_PENDING.equals(order.getStatus())) {
+                btnAction.setVisibility(View.VISIBLE);
+                btnAction.setText(R.string.btn_confirm_shipping);
+            } else if (Order.STATUS_SHIPPING.equals(order.getStatus())) {
+                btnAction.setVisibility(View.VISIBLE);
+                btnAction.setText(R.string.btn_confirm_delivered);
+            } else {
+                btnAction.setVisibility(View.GONE);
+            }
+            btnCancel.setVisibility(
+                    Order.canTransition(order.getStatus(), Order.STATUS_CANCELLED) ? View.VISIBLE : View.GONE);
+        } else {
+            tvCustomer.setVisibility(View.GONE);
+            btnAction.setVisibility(View.GONE);
+            // Khách chỉ hủy được khi đơn còn chờ xác nhận
+            btnCancel.setVisibility(order.canCancel() ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    // Quản trị viên: chờ xác nhận -> đang giao -> đã giao
+    private void moveToNextStatus() {
+        String next;
+        if (Order.STATUS_PENDING.equals(order.getStatus())) {
+            next = Order.STATUS_SHIPPING;
+        } else if (Order.STATUS_SHIPPING.equals(order.getStatus())) {
+            next = Order.STATUS_DELIVERED;
+        } else {
+            return;
+        }
+        reportStatusResult(db.changeOrderStatus(orderId, next, null));
+    }
+
+    private void reportStatusResult(int result) {
+        int messageRes;
+        if (result == DatabaseHelper.CHANGE_OK) {
+            messageRes = R.string.msg_status_changed;
+        } else if (result == DatabaseHelper.CHANGE_INVALID) {
+            messageRes = R.string.msg_status_invalid;
+        } else {
+            messageRes = R.string.msg_update_failed;
+        }
+        Toast.makeText(this, messageRes, Toast.LENGTH_SHORT).show();
+        showOrder(); // đọc lại để hiển thị trạng thái mới nhất
     }
 
     // Hộp thoại nhập lý do hủy; kiểm tra lý do mà không tự đóng hộp thoại khi sai
@@ -174,12 +247,16 @@ public class OrderDetailActivity extends AppCompatActivity {
                     tilReason.setError(getString(R.string.error_cancel_reason));
                     return;
                 }
-                boolean ok = db.cancelOrder(orderId, userId, reason);
                 dialog.dismiss();
-                Toast.makeText(OrderDetailActivity.this,
-                        ok ? R.string.msg_order_cancelled : R.string.msg_cancel_failed,
-                        Toast.LENGTH_SHORT).show();
-                showOrder();
+                if (adminMode) {
+                    reportStatusResult(db.changeOrderStatus(orderId, Order.STATUS_CANCELLED, reason));
+                } else {
+                    boolean ok = db.cancelOrder(orderId, userId, reason);
+                    Toast.makeText(OrderDetailActivity.this,
+                            ok ? R.string.msg_order_cancelled : R.string.msg_cancel_failed,
+                            Toast.LENGTH_SHORT).show();
+                    showOrder();
+                }
             }
         });
     }

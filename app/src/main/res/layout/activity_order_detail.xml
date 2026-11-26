@@ -57,6 +57,16 @@
                 android:layout_marginTop="2dp" />
 
             <TextView
+                android:id="@+id/tvCustomer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_main"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
                 android:id="@+id/tvReceiver"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -134,11 +144,19 @@
                 android:orientation="vertical" />
 
             <Button
-                android:id="@+id/btnInvoice"
+                android:id="@+id/btnAction"
                 style="@style/ButtonPrimary"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:layout_marginTop="24dp"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btnInvoice"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="8dp"
                 android:text="@string/btn_export_invoice" />
 
             <Button

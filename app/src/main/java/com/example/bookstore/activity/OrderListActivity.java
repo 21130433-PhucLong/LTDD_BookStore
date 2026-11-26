@@ -19,6 +19,7 @@ import com.example.bookstore.R;
 import com.example.bookstore.adapter.OrderAdapter;
 import com.example.bookstore.data.DatabaseHelper;
 import com.example.bookstore.model.Order;
+import com.example.bookstore.util.AdminUtil;
 import com.example.bookstore.util.SessionManager;
 import com.example.bookstore.util.StatusUtil;
 import com.example.bookstore.util.UiUtil;
@@ -28,6 +29,9 @@ import java.util.List;
 
 
 public class OrderListActivity extends AppCompatActivity {
+
+    // true: quản trị viên xem đơn của mọi khách
+    public static final String EXTRA_ADMIN_MODE = "admin_mode";
 
     private static final String STATE_STATUS = "state_status";
     private static final String STATE_SORT = "state_sort";
@@ -45,16 +49,25 @@ public class OrderListActivity extends AppCompatActivity {
 
     private DatabaseHelper db;
     private int userId;
+    private boolean adminMode;
     private String statusFilter = "";
     private int sortPosition = 0; // 0 = mới nhất, 1 = cũ nhất
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        adminMode = getIntent().getBooleanExtra(EXTRA_ADMIN_MODE, false);
+        // Chế độ quản trị chỉ dành cho admin
+        if (adminMode && !AdminUtil.isCurrentUserAdmin(this)) {
+            finish();
+            return;
+        }
+
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_order_list);
         WindowUtil.applySystemBarsPadding(findViewById(R.id.main), false);
-        UiUtil.setupBackToolbar(this, R.string.title_orders);
+        UiUtil.setupBackToolbar(this, adminMode ? R.string.title_admin_orders : R.string.title_orders);
 
         chipGroup = findViewById(R.id.chipGroup);
         spinnerSort = findViewById(R.id.spinnerSort);
@@ -71,17 +84,19 @@ public class OrderListActivity extends AppCompatActivity {
         }
 
         adapter = new OrderAdapter(this);
+        adapter.setShowCustomer(adminMode);
         lvOrders.setAdapter(adapter);
 
         setupChips();
         setupSortSpinner();
 
-        // Bấm một đơn: mở chi tiết
+        // Bấm một đơn: mở chi tiết (giữ nguyên chế độ đang dùng)
         lvOrders.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Intent intent = new Intent(OrderListActivity.this, OrderDetailActivity.class);
                 intent.putExtra(OrderDetailActivity.EXTRA_ORDER_ID, adapter.getItem(position).getId());
+                intent.putExtra(OrderDetailActivity.EXTRA_ADMIN_MODE, adminMode);
                 startActivity(intent);
             }
         });
@@ -138,12 +153,15 @@ public class OrderListActivity extends AppCompatActivity {
 
     // Đọc đơn theo bộ lọc hiện tại rồi hiển thị
     private void loadOrders() {
-        List<Order> orders = db.getOrdersByUser(userId, statusFilter, sortPosition == 0);
+        boolean newestFirst = sortPosition == 0;
+        List<Order> orders = adminMode
+                ? db.getAllOrders(statusFilter, newestFirst)
+                : db.getOrdersByUser(userId, statusFilter, newestFirst);
         adapter.setData(orders);
         tvEmpty.setVisibility(orders.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
-    // Quay lại từ màn chi tiết (đơn có thể vừa bị hủy) thì tải lại
+    // Quay lại từ màn chi tiết (trạng thái đơn có thể vừa đổi) thì tải lại
     @Override
     protected void onResume() {
         super.onResume();

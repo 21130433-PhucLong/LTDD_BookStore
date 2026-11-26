@@ -130,7 +130,7 @@ public class BookEditActivity extends AppCompatActivity {
 
         coverNames = new String[COVER_COUNT];
         for (int i = 0; i < COVER_COUNT; i++) {
-            coverNames[i] = String.format(Locale.US, "book_cover_%02d", i + 1);
+            coverNames[i] = String.format(Locale.US, "book_%02d", i + 1);
         }
         ArrayAdapter<String> coverAdapter = new ArrayAdapter<>(
                 this, android.R.layout.simple_spinner_item, coverNames);

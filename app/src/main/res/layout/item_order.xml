@@ -35,6 +35,15 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp" />
 
+    <TextView
+        android:id="@+id/tvCustomer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textColor="@color/text_main"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

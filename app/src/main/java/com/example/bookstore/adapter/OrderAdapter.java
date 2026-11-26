@@ -15,13 +15,19 @@ import com.example.bookstore.util.StatusUtil;
 import java.util.ArrayList;
 import java.util.List;
 
-public class OrderAdapter extends BaseAdapter {
 
+public class OrderAdapter extends BaseAdapter {
+//    Đưa danh sách đơn hàng lên ListView. Ở chế độ quản trị hiện thêm tên khách.
     private final Context context;
     private final List<Order> orders = new ArrayList<>();
+    private boolean showCustomer = false;
 
     public OrderAdapter(Context context) {
         this.context = context;
+    }
+
+    public void setShowCustomer(boolean showCustomer) {
+        this.showCustomer = showCustomer;
     }
 
     public void setData(List<Order> newOrders) {
@@ -49,6 +55,7 @@ public class OrderAdapter extends BaseAdapter {
         TextView tvOrderCode;
         TextView tvStatus;
         TextView tvDate;
+        TextView tvCustomer;
         TextView tvItemCount;
         TextView tvTotal;
     }
@@ -62,6 +69,7 @@ public class OrderAdapter extends BaseAdapter {
             holder.tvOrderCode = convertView.findViewById(R.id.tvOrderCode);
             holder.tvStatus = convertView.findViewById(R.id.tvStatus);
             holder.tvDate = convertView.findViewById(R.id.tvDate);
+            holder.tvCustomer = convertView.findViewById(R.id.tvCustomer);
             holder.tvItemCount = convertView.findViewById(R.id.tvItemCount);
             holder.tvTotal = convertView.findViewById(R.id.tvTotal);
             convertView.setTag(holder);
@@ -76,6 +84,13 @@ public class OrderAdapter extends BaseAdapter {
         holder.tvDate.setText(FormatUtil.formatDateTime(order.getCreatedAt()));
         holder.tvItemCount.setText(context.getString(R.string.order_item_count, order.getItemCount()));
         holder.tvTotal.setText(FormatUtil.formatPrice(order.getTotal()));
+
+        if (showCustomer && order.getCustomerName() != null) {
+            holder.tvCustomer.setVisibility(View.VISIBLE);
+            holder.tvCustomer.setText(order.getCustomerName());
+        } else {
+            holder.tvCustomer.setVisibility(View.GONE);
+        }
         return convertView;
     }
 }
