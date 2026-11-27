@@ -189,4 +189,12 @@
     <string name="label_customer_value">Khách hàng: %1$s (%2$s)</string>
     <string name="books_empty">Không có sách phù hợp</string>
 
+    <string name="cd_banner">Banner khuyến mãi</string>
+    <string name="cd_wishlist">Yêu thích</string>
+    <string name="wishlist_add">Thêm vào yêu thích</string>
+    <string name="wishlist_remove">Bỏ khỏi yêu thích</string>
+    <string name="title_wishlist">Sách yêu thích</string>
+    <string name="btn_wishlist">Sách yêu thích</string>
+    <string name="wishlist_empty">Bạn chưa có sách yêu thích nào</string>
+
 </resources>

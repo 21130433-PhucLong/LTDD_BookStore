@@ -22,12 +22,14 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.HashSet;
+import java.util.Set;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "bookstore.db";
 
-    private static final int DB_VERSION = 4;
+    private static final int DB_VERSION = 5;
 
     // ---- Bảng users ----
     public static final String TABLE_USERS = "users";
@@ -144,6 +146,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         seedBooks(db);
         createCartTable(db);
         createOrderTables(db);
+        createWishlistTable(db);
     }
 
     @Override
@@ -158,6 +161,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 4) {
             createOrderTables(db);
+        }
+        if (oldVersion < 5) {
+            createWishlistTable(db);
         }
     }
 
@@ -997,5 +1003,77 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         } finally {
             db.endTransaction();
         }
+    }
+
+    // ---------------- Yêu thích ----------------
+
+    // Khóa chính ghép (user_id, book_id): mỗi người chỉ yêu thích một cuốn một lần
+    private void createWishlistTable(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE wishlist ("
+                + "user_id INTEGER NOT NULL, "
+                + "book_id INTEGER NOT NULL, "
+                + "created_at TEXT NOT NULL, "
+                + "PRIMARY KEY (user_id, book_id), "
+                + "FOREIGN KEY (user_id) REFERENCES " + TABLE_USERS + "(" + COL_USER_ID + ") ON DELETE CASCADE, "
+                + "FOREIGN KEY (book_id) REFERENCES " + TABLE_BOOKS + "(" + COL_BOOK_ID + ") ON DELETE CASCADE)");
+    }
+
+    public boolean isInWishlist(int userId, int bookId) {
+        Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT 1 FROM wishlist WHERE user_id = ? AND book_id = ?",
+                new String[]{String.valueOf(userId), String.valueOf(bookId)});
+        try {
+            return cursor.moveToFirst();
+        } finally {
+            cursor.close();
+        }
+    }
+
+    // Đang yêu thích thì bỏ, chưa thì thêm; trả về trạng thái mới (true = đang yêu thích)
+    public boolean toggleWishlist(int userId, int bookId) {
+        SQLiteDatabase db = getWritableDatabase();
+        if (isInWishlist(userId, bookId)) {
+            db.delete("wishlist", "user_id = ? AND book_id = ?",
+                    new String[]{String.valueOf(userId), String.valueOf(bookId)});
+            return false;
+        }
+        ContentValues values = new ContentValues();
+        values.put("user_id", userId);
+        values.put("book_id", bookId);
+        values.put("created_at", now());
+        db.insert("wishlist", null, values);
+        return true;
+    }
+
+    // Tập id các sách người dùng đã yêu thích (để vẽ trái tim trên danh sách)
+    public Set<Integer> getWishlistBookIds(int userId) {
+        Set<Integer> ids = new HashSet<>();
+        Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT book_id FROM wishlist WHERE user_id = ?", new String[]{String.valueOf(userId)});
+        try {
+            while (cursor.moveToNext()) {
+                ids.add(cursor.getInt(0));
+            }
+        } finally {
+            cursor.close();
+        }
+        return ids;
+    }
+
+    // Sách yêu thích (bỏ qua sách đang ẩn), mới thêm hiện trước
+    public List<Book> getWishlistBooks(int userId) {
+        List<Book> list = new ArrayList<>();
+        String sql = "SELECT b.* FROM wishlist w INNER JOIN " + TABLE_BOOKS + " b ON b." + COL_BOOK_ID + " = w.book_id"
+                + " WHERE w.user_id = ? AND b." + COL_BOOK_HIDDEN + " = 0"
+                + " ORDER BY w.created_at DESC, w.rowid DESC";
+        Cursor cursor = getReadableDatabase().rawQuery(sql, new String[]{String.valueOf(userId)});
+        try {
+            while (cursor.moveToNext()) {
+                list.add(cursorToBook(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return list;
     }
 }

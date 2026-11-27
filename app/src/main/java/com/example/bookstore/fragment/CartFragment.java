@@ -109,7 +109,8 @@ public class CartFragment extends Fragment {
             return;
         }
         int stock = item.getBook().getStock();
-        if (newQuantity > stock) {
+        // Chỉ chặn khi đang tăng mà vượt tồn kho; giảm số lượng luôn được phép
+        if (newQuantity > item.getQuantity() && newQuantity > stock) {
             Toast.makeText(requireContext(), getString(R.string.msg_exceed_stock, stock), Toast.LENGTH_SHORT).show();
             return;
         }

@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity implements CategoryFragment.
                 } else if (id == R.id.nav_admin) {
                 showFragment(new AdminFragment());
                 return true;
-            }
+                }
                 return false;
             }
         });

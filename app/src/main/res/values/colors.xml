@@ -12,4 +12,7 @@
     <color name="status_shipping">#1565C0</color>
     <color name="status_delivered">#2E7D32</color>
     <color name="status_cancelled">#C62828</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="heart_red">#E53935</color>
+    <color name="star_yellow">#F9A825</color>
 </resources>

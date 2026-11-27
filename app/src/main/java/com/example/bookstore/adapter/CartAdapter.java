@@ -93,6 +93,9 @@ public class CartAdapter extends BaseAdapter {
         holder.tvTitle.setText(book.getTitle());
         holder.tvPrice.setText(FormatUtil.formatPrice(book.getPrice()));
         holder.tvQuantity.setText(String.valueOf(item.getQuantity()));
+        // Số lượng vượt tồn kho (do người khác vừa mua hoặc admin sửa) thì tô đỏ để biết cần giảm
+        holder.tvQuantity.setTextColor(context.getColor(
+                item.getQuantity() > book.getStock() ? R.color.error_red : R.color.text_main));
         holder.tvSubtotal.setText(FormatUtil.formatPrice(item.getSubtotal()));
 
         holder.btnMinus.setOnClickListener(new View.OnClickListener() {
