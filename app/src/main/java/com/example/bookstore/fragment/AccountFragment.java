@@ -20,6 +20,7 @@ import com.example.bookstore.activity.OrderListActivity;
 import com.example.bookstore.data.DatabaseHelper;
 import com.example.bookstore.model.User;
 import com.example.bookstore.util.SessionManager;
+import com.example.bookstore.activity.WishlistActivity;
 
 public class AccountFragment extends Fragment {
 
@@ -55,6 +56,14 @@ public class AccountFragment extends Fragment {
                 startActivity(new Intent(requireContext(), OrderListActivity.class));
             }
         });
+
+        view.findViewById(R.id.btnWishlist).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(requireContext(), WishlistActivity.class));
+            }
+        });
+
         btnEditProfile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

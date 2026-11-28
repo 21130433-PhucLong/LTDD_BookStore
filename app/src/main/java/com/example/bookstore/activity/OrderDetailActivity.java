@@ -163,6 +163,12 @@ public class OrderDetailActivity extends AppCompatActivity {
         UiUtil.addLine(this, llSummary, getString(R.string.label_subtotal),
                 FormatUtil.formatPrice(order.getSubtotal()), false);
         UiUtil.addLine(this, llSummary, getString(R.string.label_shipping), feeText, false);
+
+        if (order.getDiscountAmount() > 0) {
+            UiUtil.addLine(this, llSummary, getString(R.string.label_discount, order.getVoucherCode()),
+                    "-" + FormatUtil.formatPrice(order.getDiscountAmount()), false);
+        }
+
         UiUtil.addLine(this, llSummary, getString(R.string.label_total),
                 FormatUtil.formatPrice(order.getTotal()), true);
 

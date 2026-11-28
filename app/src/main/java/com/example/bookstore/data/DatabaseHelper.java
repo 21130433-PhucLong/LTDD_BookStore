@@ -13,23 +13,27 @@ import com.example.bookstore.model.CartItem;
 import com.example.bookstore.model.Category;
 import com.example.bookstore.model.Order;
 import com.example.bookstore.model.OrderItem;
+import com.example.bookstore.model.Review;
 import com.example.bookstore.model.User;
+import com.example.bookstore.model.Voucher;
 import com.example.bookstore.util.PasswordUtil;
 import com.example.bookstore.util.TextUtil;
+import com.example.bookstore.util.VoucherUtil;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.HashSet;
 import java.util.Set;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "bookstore.db";
 
-    private static final int DB_VERSION = 5;
+    // Phiên bản 6: reviews, vouchers, giảm giá trong orders
+    private static final int DB_VERSION = 6;
 
     // ---- Bảng users ----
     public static final String TABLE_USERS = "users";
@@ -86,6 +90,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COL_ORDER_PAYMENT = "payment_method";
     public static final String COL_ORDER_NOTE = "note";
     public static final String COL_ORDER_CANCEL_REASON = "cancel_reason";
+    public static final String COL_ORDER_VOUCHER = "voucher_code";
+    public static final String COL_ORDER_DISCOUNT = "discount_amount";
     public static final String COL_ORDER_CREATED = "created_at";
 
     // ---- Bảng order_items ----
@@ -100,6 +106,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final long ORDER_ERR_EMPTY_CART = -1;
     public static final long ORDER_ERR_STOCK = -2;
     public static final long ORDER_ERR_OTHER = -3;
+    public static final long ORDER_ERR_VOUCHER = -4;
 
     // Kết quả của hàm addToCart
     public static final int ADD_SUCCESS = 0;
@@ -147,6 +154,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         createCartTable(db);
         createOrderTables(db);
         createWishlistTable(db);
+        addVoucherColumnsToOrders(db);
+        createReviewTable(db);
+        createVoucherTable(db);
+        seedVouchers(db);
     }
 
     @Override
@@ -164,6 +175,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 5) {
             createWishlistTable(db);
+        }
+        if (oldVersion < 6) {
+            addVoucherColumnsToOrders(db);
+            createReviewTable(db);
+            createVoucherTable(db);
+            seedVouchers(db);
         }
     }
 
@@ -621,8 +638,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // Đặt hàng: tạo đơn, tạo các dòng chi tiết, trừ tồn kho, xóa giỏ.
     // Tất cả nằm trong MỘT transaction: một bước lỗi thì mọi thay đổi bị hủy.
+    // Trả về id đơn (> 0) hoặc mã lỗi (ORDER_ERR_*)
     public long placeOrder(int userId, String receiverName, String phone, String address,
-                           String paymentMethod, String note) {
+                           String paymentMethod, String note, String voucherCode) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
@@ -637,9 +655,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             }
             long shippingFee = Order.calculateShippingFee(subtotal);
 
+            // Kiểm tra lại mã giảm giá tại đây, không tin dữ liệu từ giao diện
+            long discount = 0;
+            String savedCode = null;
+            if (voucherCode != null && !voucherCode.trim().isEmpty()) {
+                Voucher voucher = getVoucherByCode(voucherCode);
+                if (VoucherUtil.check(voucher, subtotal) != VoucherUtil.OK) {
+                    return ORDER_ERR_VOUCHER;
+                }
+                discount = voucher.calculateDiscount(subtotal);
+                savedCode = voucher.getCode();
+            }
+
             ContentValues orderValues = new ContentValues();
             orderValues.put(COL_ORDER_USER, userId);
-            orderValues.put(COL_ORDER_TOTAL, subtotal + shippingFee);
+            orderValues.put(COL_ORDER_TOTAL, subtotal + shippingFee - discount);
             orderValues.put(COL_ORDER_SHIPPING, shippingFee);
             orderValues.put(COL_ORDER_STATUS, Order.STATUS_PENDING);
             orderValues.put(COL_ORDER_RECEIVER, receiverName);
@@ -647,12 +677,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             orderValues.put(COL_ORDER_ADDRESS, address);
             orderValues.put(COL_ORDER_PAYMENT, paymentMethod);
             orderValues.put(COL_ORDER_NOTE, note);
+            orderValues.put(COL_ORDER_VOUCHER, savedCode);
+            orderValues.put(COL_ORDER_DISCOUNT, discount);
             orderValues.put(COL_ORDER_CREATED, now());
             long orderId = db.insert(TABLE_ORDERS, null, orderValues);
             if (orderId == -1) {
                 return ORDER_ERR_OTHER;
             }
 
+            // Câu lệnh biên dịch sẵn: trừ tồn kho chỉ khi còn đủ hàng (stock >= số lượng mua)
             SQLiteStatement updateStock = db.compileStatement(
                     "UPDATE " + TABLE_BOOKS + " SET " + COL_BOOK_STOCK + " = " + COL_BOOK_STOCK + " - ?, "
                             + COL_BOOK_SOLD + " = " + COL_BOOK_SOLD + " + ? WHERE " + COL_BOOK_ID + " = ? AND "
@@ -667,7 +700,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     updateStock.bindLong(3, item.getBookId());
                     updateStock.bindLong(4, qty);
                     if (updateStock.executeUpdateDelete() != 1) {
-                        return ORDER_ERR_STOCK;
+                        return ORDER_ERR_STOCK; // không đủ hàng: thoát, transaction không được đánh dấu thành công nên bị hủy
                     }
 
                     ContentValues lineValues = new ContentValues();
@@ -685,7 +718,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
             db.delete(TABLE_CART, COL_CART_USER + " = ?", new String[]{String.valueOf(userId)});
 
-            db.setTransactionSuccessful();
+            db.setTransactionSuccessful(); // mọi bước thành công
             return orderId;
         } catch (Exception e) {
             Log.e("DatabaseHelper", "Lỗi khi đặt hàng", e);
@@ -729,6 +762,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         int nameIndex = cursor.getColumnIndex("customer_name");
         if (nameIndex >= 0) {
             order.setCustomerName(cursor.getString(nameIndex));
+        }
+        int voucherIndex = cursor.getColumnIndex(COL_ORDER_VOUCHER);
+        if (voucherIndex >= 0) {
+            order.setVoucherCode(cursor.getString(voucherIndex));
+        }
+        int discountIndex = cursor.getColumnIndex(COL_ORDER_DISCOUNT);
+        if (discountIndex >= 0) {
+            order.setDiscountAmount(cursor.getLong(discountIndex));
         }
         return order;
     }
@@ -1075,5 +1116,200 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             cursor.close();
         }
         return list;
+    }
+
+    // ---------------- Đánh giá sách ----------------
+
+    // Mỗi người đánh giá một sách tối đa một lần (UNIQUE); xóa sách hoặc người dùng thì xóa đánh giá
+    private void createReviewTable(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE reviews ("
+                + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + "book_id INTEGER NOT NULL, "
+                + "user_id INTEGER NOT NULL, "
+                + "rating INTEGER NOT NULL, "
+                + "comment TEXT, "
+                + "created_at TEXT NOT NULL, "
+                + "UNIQUE (book_id, user_id), "
+                + "FOREIGN KEY (book_id) REFERENCES " + TABLE_BOOKS + "(" + COL_BOOK_ID + ") ON DELETE CASCADE, "
+                + "FOREIGN KEY (user_id) REFERENCES " + TABLE_USERS + "(" + COL_USER_ID + ") ON DELETE CASCADE)");
+    }
+
+    // Chỉ người có đơn "Đã giao" chứa cuốn sách này mới được đánh giá
+    public boolean canReview(int userId, int bookId) {
+        String sql = "SELECT 1 FROM " + TABLE_ORDER_ITEMS + " oi"
+                + " INNER JOIN " + TABLE_ORDERS + " o ON o." + COL_ORDER_ID + " = oi." + COL_OI_ORDER
+                + " WHERE o." + COL_ORDER_USER + " = ? AND oi." + COL_OI_BOOK + " = ?"
+                + " AND o." + COL_ORDER_STATUS + " = ? LIMIT 1";
+        Cursor cursor = getReadableDatabase().rawQuery(sql,
+                new String[]{String.valueOf(userId), String.valueOf(bookId), Order.STATUS_DELIVERED});
+        try {
+            return cursor.moveToFirst();
+        } finally {
+            cursor.close();
+        }
+    }
+
+    // Đánh giá của một sách kèm tên người viết, mới nhất trước
+    public List<Review> getReviewsByBook(int bookId) {
+        List<Review> list = new ArrayList<>();
+        String sql = "SELECT r.*, u." + COL_USER_NAME + " AS user_name FROM reviews r"
+                + " INNER JOIN " + TABLE_USERS + " u ON u." + COL_USER_ID + " = r.user_id"
+                + " WHERE r.book_id = ? ORDER BY r.created_at DESC, r.id DESC";
+        Cursor cursor = getReadableDatabase().rawQuery(sql, new String[]{String.valueOf(bookId)});
+        try {
+            while (cursor.moveToNext()) {
+                list.add(cursorToReview(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return list;
+    }
+
+    // Đánh giá của chính người dùng về sách này, chưa có thì trả về null
+    public Review getUserReview(int userId, int bookId) {
+        String sql = "SELECT r.*, u." + COL_USER_NAME + " AS user_name FROM reviews r"
+                + " INNER JOIN " + TABLE_USERS + " u ON u." + COL_USER_ID + " = r.user_id"
+                + " WHERE r.user_id = ? AND r.book_id = ?";
+        Cursor cursor = getReadableDatabase().rawQuery(sql,
+                new String[]{String.valueOf(userId), String.valueOf(bookId)});
+        try {
+            return cursor.moveToFirst() ? cursorToReview(cursor) : null;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private Review cursorToReview(Cursor cursor) {
+        Review review = new Review();
+        review.setId(cursor.getInt(cursor.getColumnIndexOrThrow("id")));
+        review.setBookId(cursor.getInt(cursor.getColumnIndexOrThrow("book_id")));
+        review.setUserId(cursor.getInt(cursor.getColumnIndexOrThrow("user_id")));
+        review.setUserName(cursor.getString(cursor.getColumnIndexOrThrow("user_name")));
+        review.setRating(cursor.getInt(cursor.getColumnIndexOrThrow("rating")));
+        review.setComment(cursor.getString(cursor.getColumnIndexOrThrow("comment")));
+        review.setCreatedAt(cursor.getString(cursor.getColumnIndexOrThrow("created_at")));
+        return review;
+    }
+
+    // Lưu đánh giá (chưa có thì thêm, có rồi thì sửa) rồi tính lại số sao trung bình của sách.
+    // Cả hai việc nằm trong một transaction.
+    public boolean saveReview(int userId, int bookId, int rating, String comment) {
+        if (!canReview(userId, bookId)) {
+            return false; // phòng trường hợp gọi khi chưa nhận hàng
+        }
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            ContentValues values = new ContentValues();
+            values.put("rating", rating);
+            values.put("comment", comment);
+            int rows = db.update("reviews", values, "user_id = ? AND book_id = ?",
+                    new String[]{String.valueOf(userId), String.valueOf(bookId)});
+            if (rows == 0) {
+                values.put("user_id", userId);
+                values.put("book_id", bookId);
+                values.put("created_at", now());
+                if (db.insert("reviews", null, values) == -1) {
+                    return false;
+                }
+            }
+            // Số sao của sách = trung bình các đánh giá
+            db.execSQL("UPDATE " + TABLE_BOOKS + " SET " + COL_BOOK_RATING
+                            + " = (SELECT AVG(rating) FROM reviews WHERE book_id = ?) WHERE " + COL_BOOK_ID + " = ?",
+                    new Object[]{bookId, bookId});
+            db.setTransactionSuccessful();
+            return true;
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "Lỗi khi lưu đánh giá", e);
+            return false;
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    // ---------------- Mã giảm giá ----------------
+
+    // Thêm cột giảm giá cho bảng orders (đơn cũ có mặc định không giảm)
+    private void addVoucherColumnsToOrders(SQLiteDatabase db) {
+        db.execSQL("ALTER TABLE " + TABLE_ORDERS + " ADD COLUMN " + COL_ORDER_VOUCHER + " TEXT");
+        db.execSQL("ALTER TABLE " + TABLE_ORDERS + " ADD COLUMN " + COL_ORDER_DISCOUNT + " INTEGER NOT NULL DEFAULT 0");
+    }
+
+    private void createVoucherTable(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE vouchers ("
+                + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + "code TEXT NOT NULL UNIQUE, "
+                + "description TEXT, "
+                + "discount_percent INTEGER NOT NULL, "
+                + "max_discount INTEGER NOT NULL, "
+                + "min_order INTEGER NOT NULL DEFAULT 0, "
+                + "is_active INTEGER NOT NULL DEFAULT 1, "
+                + "expired_at TEXT NOT NULL)");
+    }
+
+    // Mã mẫu; TET2026 đã hết hạn để thử trường hợp mã hết hạn
+    private void seedVouchers(SQLiteDatabase db) {
+        insertVoucherRow(db, "WELCOME10", "Chào mừng khách mới", 10, 30000, 100000, "2027-12-31");
+        insertVoucherRow(db, "SACH20", "Ưu đãi đơn lớn", 20, 80000, 250000, "2027-12-31");
+        insertVoucherRow(db, "TET2026", "Mã đã hết hạn (dùng để thử)", 15, 50000, 100000, "2026-02-26");
+    }
+
+    private void insertVoucherRow(SQLiteDatabase db, String code, String description,
+                                  int percent, long maxDiscount, long minOrder, String expiredAt) {
+        ContentValues values = new ContentValues();
+        values.put("code", code);
+        values.put("description", description);
+        values.put("discount_percent", percent);
+        values.put("max_discount", maxDiscount);
+        values.put("min_order", minOrder);
+        values.put("is_active", 1);
+        values.put("expired_at", expiredAt);
+        db.insert("vouchers", null, values);
+    }
+
+    // Tìm mã theo nội dung người dùng nhập (không phân biệt hoa thường), không có thì trả về null
+    public Voucher getVoucherByCode(String code) {
+        if (code == null) {
+            return null;
+        }
+        Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT * FROM vouchers WHERE code = ?",
+                new String[]{code.trim().toUpperCase(Locale.ROOT)});
+        try {
+            return cursor.moveToFirst() ? cursorToVoucher(cursor) : null;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    // Các mã đang bật và chưa hết hạn, để gợi ý cho khách
+    public List<Voucher> getActiveVouchers() {
+        List<Voucher> list = new ArrayList<>();
+        String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
+        Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT * FROM vouchers WHERE is_active = 1 AND expired_at >= ? ORDER BY min_order",
+                new String[]{today});
+        try {
+            while (cursor.moveToNext()) {
+                list.add(cursorToVoucher(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return list;
+    }
+
+    private Voucher cursorToVoucher(Cursor cursor) {
+        Voucher voucher = new Voucher();
+        voucher.setId(cursor.getInt(cursor.getColumnIndexOrThrow("id")));
+        voucher.setCode(cursor.getString(cursor.getColumnIndexOrThrow("code")));
+        voucher.setDescription(cursor.getString(cursor.getColumnIndexOrThrow("description")));
+        voucher.setDiscountPercent(cursor.getInt(cursor.getColumnIndexOrThrow("discount_percent")));
+        voucher.setMaxDiscount(cursor.getLong(cursor.getColumnIndexOrThrow("max_discount")));
+        voucher.setMinOrder(cursor.getLong(cursor.getColumnIndexOrThrow("min_order")));
+        voucher.setActive(cursor.getInt(cursor.getColumnIndexOrThrow("is_active")) == 1);
+        voucher.setExpiredAt(cursor.getString(cursor.getColumnIndexOrThrow("expired_at")));
+        return voucher;
     }
 }

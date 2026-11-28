@@ -50,6 +50,10 @@ public class InvoiceUtil {
         sb.append("----------------------------------------\n");
         sb.append("Tạm tính: ").append(FormatUtil.formatPrice(order.getSubtotal())).append("\n");
         sb.append("Phí giao hàng: ").append(FormatUtil.formatPrice(order.getShippingFee())).append("\n");
+        if (order.getDiscountAmount() > 0) {
+            sb.append("Giảm giá (").append(order.getVoucherCode()).append("): -")
+                    .append(FormatUtil.formatPrice(order.getDiscountAmount())).append("\n");
+        }
         sb.append("TỔNG THANH TOÁN: ").append(FormatUtil.formatPrice(order.getTotal())).append("\n");
 
         // try-with-resources: tự đóng file khi xong

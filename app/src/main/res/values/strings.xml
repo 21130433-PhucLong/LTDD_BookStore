@@ -197,4 +197,30 @@
     <string name="btn_wishlist">Sách yêu thích</string>
     <string name="wishlist_empty">Bạn chưa có sách yêu thích nào</string>
 
+    <string name="section_reviews">Đánh giá của khách hàng</string>
+    <string name="review_summary">★ %1$.1f  ·  %2$d đánh giá</string>
+    <string name="review_empty">Chưa có đánh giá nào</string>
+    <string name="btn_write_review">Viết đánh giá</string>
+    <string name="btn_edit_review">Sửa đánh giá</string>
+    <string name="dialog_review_title">Đánh giá sách</string>
+    <string name="hint_review_comment">Nhận xét của bạn (không bắt buộc)</string>
+    <string name="btn_send_review">Gửi</string>
+    <string name="msg_review_saved">Đã lưu đánh giá</string>
+    <string name="msg_review_choose_star">Vui lòng chọn số sao</string>
+    <string name="msg_review_failed">Không lưu được đánh giá</string>
+    <string name="section_voucher">Mã giảm giá</string>
+    <string name="hint_voucher">Nhập mã giảm giá</string>
+    <string name="btn_apply">Áp dụng</string>
+    <string name="voucher_list_link">Xem mã có thể dùng</string>
+    <string name="voucher_list_title">Mã giảm giá có thể dùng</string>
+    <string name="voucher_list_empty">Hiện chưa có mã giảm giá nào</string>
+    <string name="voucher_applied">Đã áp dụng %1$s (giảm %2$d%%, tối đa %3$s)</string>
+    <string name="voucher_not_found">Mã giảm giá không tồn tại</string>
+    <string name="voucher_inactive">Mã giảm giá đã ngừng hoạt động</string>
+    <string name="voucher_expired">Mã giảm giá đã hết hạn</string>
+    <string name="voucher_min_order">Đơn tối thiểu %1$s mới dùng được mã này</string>
+    <string name="label_discount">Giảm giá (%1$s)</string>
+    <string name="error_order_voucher">Mã giảm giá không còn hợp lệ, vui lòng kiểm tra lại</string>
+    <string name="voucher_item_label">%1$s: giảm %2$d%%, tối đa %3$s, đơn từ %4$s</string>
+
 </resources>

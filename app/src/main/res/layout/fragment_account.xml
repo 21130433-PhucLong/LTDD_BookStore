@@ -46,6 +46,14 @@
             android:text="@string/btn_my_orders" />
 
         <Button
+            android:id="@+id/btnWishlist"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
+            android:text="@string/btn_wishlist" />
+
+        <Button
             android:id="@+id/btnEditProfile"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"

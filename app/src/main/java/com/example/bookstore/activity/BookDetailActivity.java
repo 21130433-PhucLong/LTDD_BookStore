@@ -12,6 +12,11 @@ import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import android.content.DialogInterface;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.RatingBar;
+import androidx.appcompat.app.AlertDialog;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.example.bookstore.R;
@@ -21,6 +26,9 @@ import com.example.bookstore.util.FormatUtil;
 import com.example.bookstore.util.ImageUtil;
 import com.example.bookstore.util.SessionManager;
 import com.example.bookstore.util.WindowUtil;
+import com.example.bookstore.model.Review;
+
+import java.util.List;
 
 
 public class BookDetailActivity extends AppCompatActivity {
@@ -59,6 +67,7 @@ public class BookDetailActivity extends AppCompatActivity {
 
         showBook();
         setupAddToCart();
+        setupReviews();
     }
 
     private void setupToolbar() {
@@ -199,4 +208,109 @@ public class BookDetailActivity extends AppCompatActivity {
         super.onSaveInstanceState(outState);
         outState.putInt(STATE_QUANTITY, quantity);
     }
+
+    // ---------------- Đánh giá ----------------
+
+    private LinearLayout llReviews;
+    private TextView tvReviewSummary;
+    private TextView tvNoReview;
+    private Button btnWriteReview;
+
+    private void setupReviews() {
+        llReviews = findViewById(R.id.llReviews);
+        tvReviewSummary = findViewById(R.id.tvReviewSummary);
+        tvNoReview = findViewById(R.id.tvNoReview);
+        btnWriteReview = findViewById(R.id.btnWriteReview);
+
+        btnWriteReview.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showReviewDialog();
+            }
+        });
+        loadReviews();
+    }
+
+    // Đọc đánh giá từ database và vẽ danh sách; quyết định có hiện nút "Viết đánh giá" hay không
+    private void loadReviews() {
+        DatabaseHelper db = DatabaseHelper.getInstance(this);
+        int userId = new SessionManager(this).getUserId();
+
+        List<Review> reviews = db.getReviewsByBook(book.getId());
+        llReviews.removeAllViews();
+        for (Review review : reviews) {
+            View item = getLayoutInflater().inflate(R.layout.item_review, llReviews, false);
+            ((TextView) item.findViewById(R.id.tvReviewer)).setText(review.getUserName());
+            ((RatingBar) item.findViewById(R.id.rbItem)).setRating(review.getRating());
+            ((TextView) item.findViewById(R.id.tvReviewDate)).setText(FormatUtil.formatDateTime(review.getCreatedAt()));
+            TextView tvComment = item.findViewById(R.id.tvReviewComment);
+            if (review.getComment() == null || review.getComment().isEmpty()) {
+                tvComment.setVisibility(View.GONE);
+            } else {
+                tvComment.setText(review.getComment());
+            }
+            llReviews.addView(item);
+        }
+
+        boolean empty = reviews.isEmpty();
+        tvNoReview.setVisibility(empty ? View.VISIBLE : View.GONE);
+        tvReviewSummary.setVisibility(empty ? View.GONE : View.VISIBLE);
+        if (!empty) {
+            tvReviewSummary.setText(getString(R.string.review_summary, book.getRating(), reviews.size()));
+        }
+
+        // Chỉ người đã nhận sách (có đơn "Đã giao" chứa sách này) mới thấy nút đánh giá
+        boolean canReview = db.canReview(userId, book.getId());
+        btnWriteReview.setVisibility(canReview ? View.VISIBLE : View.GONE);
+        boolean hasReviewed = db.getUserReview(userId, book.getId()) != null;
+        btnWriteReview.setText(hasReviewed ? R.string.btn_edit_review : R.string.btn_write_review);
+    }
+
+    // Hộp thoại chọn số sao và viết nhận xét; đã đánh giá rồi thì điền sẵn để sửa
+    private void showReviewDialog() {
+        final DatabaseHelper db = DatabaseHelper.getInstance(this);
+        final int userId = new SessionManager(this).getUserId();
+        Review existing = db.getUserReview(userId, book.getId());
+
+        View view = getLayoutInflater().inflate(R.layout.dialog_review, null);
+        final RatingBar ratingBar = view.findViewById(R.id.ratingBar);
+        final EditText edtComment = view.findViewById(R.id.edtReviewComment);
+        if (existing != null) {
+            ratingBar.setRating(existing.getRating());
+            edtComment.setText(existing.getComment());
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_review_title)
+                .setView(view)
+                .setPositiveButton(R.string.btn_send_review, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        int rating = (int) ratingBar.getRating();
+                        if (rating < 1) {
+                            Toast.makeText(BookDetailActivity.this, R.string.msg_review_choose_star,
+                                    Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        String comment = edtComment.getText().toString().trim();
+                        if (db.saveReview(userId, book.getId(), rating, comment)) {
+                            Toast.makeText(BookDetailActivity.this, R.string.msg_review_saved,
+                                    Toast.LENGTH_SHORT).show();
+                            // Đọc lại sách để cập nhật số sao trung bình, rồi vẽ lại màn hình
+                            Book fresh = db.getBookById(book.getId());
+                            if (fresh != null) {
+                                book = fresh;
+                                showBook();
+                            }
+                            loadReviews();
+                        } else {
+                            Toast.makeText(BookDetailActivity.this, R.string.msg_review_failed,
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                })
+                .setNegativeButton(R.string.btn_back, null)
+                .show();
+    }
+
 }

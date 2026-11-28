@@ -36,9 +36,9 @@ public class Order {
         return subtotal >= FREE_SHIPPING_FROM ? 0 : SHIPPING_FEE;
     }
 
-    // Tiền hàng chưa gồm phí giao
+    // Tiền hàng chưa gồm phí giao và chưa trừ giảm giá
     public long getSubtotal() {
-        return total - shippingFee;
+        return total - shippingFee + discountAmount;
     }
 
     // Chỉ hủy được khi đơn còn chờ xác nhận
@@ -90,6 +90,15 @@ public class Order {
 
     public String getCustomerName() { return customerName; }
     public void setCustomerName(String customerName) { this.customerName = customerName; }
+
+    private String voucherCode;   // mã giảm giá đã dùng (có thể null)
+    private long discountAmount;  // số tiền được giảm
+
+    public String getVoucherCode() { return voucherCode; }
+    public void setVoucherCode(String voucherCode) { this.voucherCode = voucherCode; }
+
+    public long getDiscountAmount() { return discountAmount; }
+    public void setDiscountAmount(long discountAmount) { this.discountAmount = discountAmount; }
 
     // Quy tắc đổi trạng thái: chờ xác nhận -> đang giao -> đã giao; chưa giao xong thì hủy được
     public static boolean canTransition(String from, String to) {
